@@ -21,7 +21,7 @@ import {
 } from "~/components/Sidebar.logic";
 import { SidebarGroup } from "~/components/ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
-import { useThreadShells } from "~/state/entities";
+import { useVisibleThreadShells } from "~/state/entities";
 import { PlusIcon } from "./icons/lucide-phosphor";
 import type { SidebarV2ChromeProjectGroup } from "./SidebarV2ChromeRows";
 import type { SidebarV2GroupableProject } from "./sidebarV2ProjectGrouping";
@@ -39,7 +39,7 @@ export function SidebarV2RecentProjectsStrip<
   readonly onStartAgent: (projectKey: string) => void;
 }) {
   // No delegated-under-parent set: the strip only asks which projects hold any live thread.
-  const threads = filterSidebarV2VisibleThreads(useThreadShells(), null, new Set());
+  const threads = filterSidebarV2VisibleThreads(useVisibleThreadShells(), null, new Set());
   const activeRefs = new Set(threads.map(projectRefKey));
   const recentProjects = sortLogicalProjectsForSidebar(
     props.projectGroups.filter((group) =>

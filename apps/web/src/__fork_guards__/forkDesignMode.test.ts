@@ -485,13 +485,14 @@ describe("fork guard: design mode", () => {
   });
 
   it("renders sent design changes as transcript chips, not raw markdown", () => {
-    // Upstream moved the user row into TimelineUserMessageRow; a guest message strips first.
+    // Upstream moved the user row into TimelineUserMessageRow; the presented text (a guest's
+    // own words, else the message text) strips first.
     const timeline = read("src/components/chat/TimelineUserMessageRow.tsx");
     expect(timeline).toContain(
       'import { extractTrailingDesignChanges } from "~/custom/designMode/designChangeTranscript"',
     );
-    expect(timeline).toMatch(
-      /const forkDesignChanges = extractTrailingDesignChanges\(\s*userMessage\.attribution === "guest" \? userMessage\.text : row\.message\.text,\s*\);/u,
+    expect(timeline).toContain(
+      "const forkDesignChanges = extractTrailingDesignChanges(userMessage.text);",
     );
     expect(timeline).toContain("<ForkTranscriptDesignChanges");
     expect(timeline).toContain("blocks={forkDesignChanges.blocks}");
@@ -532,7 +533,8 @@ describe("fork guard: design mode", () => {
     // Upstream moved queued-run editing out of ChatView (#20304).
     const queuedEdit = read("src/components/chat/useQueuedRunEdit.ts");
     expect(queuedEdit).toContain(
-      "const forkQueuedEdit = splitTrailingDesignChangeRun(request.text);",
+      // `text` is upstream's request.text with the attachment-only placeholder stripped.
+      "const forkQueuedEdit = splitTrailingDesignChangeRun(text);",
     );
     expect(queuedEdit).toContain("store.setPrompt(target, forkQueuedEdit.promptText);");
     expect(queuedEdit).toContain("originalText: forkQueuedEdit.promptText,");
@@ -540,8 +542,8 @@ describe("fork guard: design mode", () => {
     expect(queuedEdit).toContain(
       "const editText = appendDesignChangeRun(content.prompt.trim(), editing.forkDesignChangeRun);",
     );
-    expect(queuedEdit).toMatch(
-      /text:\s*editText\.length === 0\s*\?\s*ATTACHMENT_ONLY_BOOTSTRAP_PROMPT\s*:\s*editText,/u,
+    expect(queuedEdit).toContain(
+      "text: restoreAttachmentOnlyBootstrapPrompt(editText, uploads.length > 0),",
     );
     // Split round-trip: the run is the raw wrapped tail, re-joinable verbatim.
     const markdown = "# Design change request\n\n## 1. <a> — src/x.tsx:1:1\n- y";

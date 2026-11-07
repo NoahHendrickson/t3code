@@ -1,5 +1,11 @@
 import { workspaceAreaProps } from "../../lib/workspaceFocus";
-import { useLayoutEffect, useState, type ReactNode, type RefObject } from "react";
+import {
+  useLayoutEffect,
+  useState,
+  type MouseEventHandler,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import type { ScopedThreadRef } from "@t3tools/contracts";
 import { ScrollArea } from "../ui/scroll-area";
 import { cn } from "../../lib/utils";
@@ -17,6 +23,8 @@ export function ThreadDetailsCard({
   threadRef,
   anchor,
   handle,
+  contentKey,
+  onContextMenu,
   children,
   /* fork:begin fork-popup-surface — see .fork/customizations.yaml#fork-popup-surface */
   forkGlassPopup = false,
@@ -25,6 +33,9 @@ export function ThreadDetailsCard({
   threadRef: ScopedThreadRef;
   anchor: RefObject<Element | null>;
   handle: ReturnType<typeof PopoverCreateHandle>;
+  /** Changes when the set of rendered items changes, so cached heights are measured again. */
+  contentKey: string;
+  onContextMenu?: MouseEventHandler<HTMLDivElement>;
   children: (density: "full" | "compact" | "essential") => ReactNode;
   /* fork:begin fork-popup-surface — see .fork/customizations.yaml#fork-popup-surface */
   /** Stamps the portaled popover wrapper so the Glass popup recipe and cutout
@@ -44,7 +55,7 @@ export function ThreadDetailsCard({
   const popoverOpen = useRightPanelStore((state) =>
     selectThreadPanelOpen(state.threadPanelVisibilityByThreadKey, threadRef, "popover"),
   );
-  const measurementKey = `${threadRef.environmentId}:${threadRef.threadId}:${preferredPlacement?.width ?? "popup"}`;
+  const measurementKey = `${threadRef.environmentId}:${threadRef.threadId}:${preferredPlacement?.width ?? "popup"}:${contentKey}`;
   const [measurements, setMeasurements] = useState({
     key: measurementKey,
     heights: { full: 0, compact: 0 },
@@ -75,10 +86,10 @@ export function ThreadDetailsCard({
     const measure = () => {
       const frame = element.closest<HTMLElement>("[data-thread-details-card]");
       const next = element.offsetHeight + (frame ? frame.offsetHeight - frame.clientHeight : 0);
-      // PR lists and lineage scroll as they expand. Counting them toward density would hide
-      // the section and workspace controls when the user asks to see more rows.
+      // PR lists, servers, lineage, side chats and automations scroll as they grow. Counting them
+      // toward density would hide the section and workspace controls when the user asks to see more.
       const lists = element.querySelectorAll<HTMLElement>(
-        "[data-thread-relationships-panel], [data-thread-details-pr-list]",
+        "[data-thread-relationships-panel], [data-thread-side-chats-panel], [data-thread-details-pr-list], [data-thread-automations-panel], [data-thread-details-server-overflow]",
       );
       const fittingHeight =
         next - Array.from(lists).reduce((sum, list) => sum + list.offsetHeight, 0);
@@ -117,6 +128,7 @@ export function ThreadDetailsCard({
           "max-h-[min(calc(100dvh-6.5rem),calc(var(--available-height,100dvh)-1rem))]",
       )}
       style={placement ? { maxHeight: height } : undefined}
+      onContextMenu={onContextMenu}
       data-thread-details-card
       /* fork:begin fork-cool-darker-theme — see .fork/customizations.yaml#fork-cool-darker-theme
          Glass's popup rim: the halo, the glint and the sheens. The card

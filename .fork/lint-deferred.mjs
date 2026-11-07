@@ -35,15 +35,15 @@ export const DEFERRED_LINT_RULES = [
   ["react/memo-dependencies", 12],
   ["react/refs", 15],
   ["react/set-state-in-effect", 5],
-  ["t3code/no-manual-memo", 131],
+  ["t3code/no-manual-memo", 130],
   ["t3code/no-outset-state-indicators", 12],
   // Section dividers in the vendored design-mode engine, kept verbatim for re-syncs.
-  ["t3code/no-low-value-comments", 873],
+  ["t3code/no-low-value-comments", 861],
   ["t3code/no-raw-resize-observer", 4],
   // Upstream rules new in the 2026-10-28 sync; fork code predates them.
   ["react/preserve-manual-memoization", 2],
   ["t3code/no-em-dash-copy", 87],
-  ["t3code/no-unreasoned-state-sync", 39],
-  ["t3code/require-disposable-render", 16],
+  ["t3code/no-unreasoned-state-sync", 32],
+  ["t3code/require-disposable-render", 13],
   ["t3code/no-frame-waits-in-browser-tests", 1],
 ];

@@ -1,9 +1,17 @@
-import { ArrowLeftIcon, ChartNoAxesColumnIcon, SettingsIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, ChartNoAxesColumnIcon, SettingsIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { memo } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 
+import { useAtomValue } from "@effect/atom-react";
 import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
+import { shortcutLabelForCommand } from "../../keybindings";
+import {
+  navigateHistory,
+  useCanNavigateHistory,
+  type HistoryDirection,
+} from "../../navigationHistory";
+import { primaryServerKeybindingsAtom } from "../../state/server";
 import { cn } from "../../lib/utils";
 import { usePullRequestsSupported } from "../../state/environments";
 import {
@@ -15,6 +23,7 @@ import { Badge } from "../ui/badge";
 import { SidebarBrandWordmark } from "~/custom/SidebarBrandWordmark";
 import { SidebarBrandMark } from "~/custom/SidebarBrandMark";
 /* fork:end fork-sidebar-chrome */
+import { Button } from "../ui/button";
 import {
   SidebarFooter,
   SidebarMenu,
@@ -74,6 +83,13 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
           // oxlint-disable-next-line shadcn/no-restyle -- the fork's chrome restyles the trigger
           className="[:hover,[data-pressed]]:bg-sidebar-row-hover focus-visible:ring-ring focus-visible:ring-offset-sidebar [&_svg]:size-4! [&_svg]:text-sidebar-muted-foreground/80! [&_svg]:opacity-100!"
         />
+        {/* Upstream's desktop back/forward pair follows the toggle; the flat header has no backdrop. */}
+        {isElectron ? (
+          <div className="hidden items-center md:flex">
+            <HistoryNavigationButton direction="back" onBackdrop={false} />
+            <HistoryNavigationButton direction="forward" onBackdrop={false} />
+          </div>
+        ) : null}
       </div>
       {/* Preserve the existing identification setting without changing the
           default header: only the explicit pill mode adds this badge. */}
@@ -95,8 +111,10 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
 });
 
 export function SidebarBrandWidthProbe({
+  isElectron,
   onWidthChange,
 }: {
+  isElectron: boolean;
   onWidthChange: (width: number) => void;
 }) {
   const observeWidth = (probe: HTMLDivElement) => {
@@ -112,13 +130,19 @@ export function SidebarBrandWidthProbe({
       ref={observeWidth}
     >
       {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
-          The fork header is [toggle] … [brand]: the controls inset, the trigger's
-          box, the gap-2, then the trailing lockup with its pr-4. The pill is not
-          counted — it hides under the 15rem container query before it could
-          clip, and the header ends on the brand's pr-4, not a px-3. */}
+          The fork header is [toggle][back/forward on desktop] … [brand]: the controls
+          inset, the trigger's box plus the history pair's two, the gap-2, then the
+          trailing lockup with its pr-4. The pill is not counted — it hides under the
+          15rem container query before it could clip, and the header ends on the
+          brand's pr-4, not a px-3. */}
       {/* oxlint-disable-next-line shadcn/no-arbitrary-values -- the inset is a runtime variable, not a scale value */}
       <div className="flex items-center gap-2 pl-[var(--workspace-controls-left)]">
-        <span className="size-[var(--workspace-titlebar-control-size)] shrink-0" />
+        <span className="flex shrink-0">
+          <span className="size-[var(--workspace-titlebar-control-size)] shrink-0" />
+          {isElectron ? (
+            <span className="w-[calc(2*var(--workspace-titlebar-control-size))] shrink-0" />
+          ) : null}
+        </span>
         <span className="flex h-4 items-center gap-1 pr-4">
           <SidebarBrandMark className="size-4 shrink-0" />
           <SidebarBrandWordmark />
@@ -126,6 +150,48 @@ export function SidebarBrandWidthProbe({
       </div>
       {/* fork:end fork-sidebar-chrome */}
     </div>
+  );
+}
+
+function HistoryNavigationButton({
+  direction,
+  onBackdrop,
+}: {
+  direction: HistoryDirection;
+  onBackdrop: boolean;
+}) {
+  const keybindings = useAtomValue(primaryServerKeybindingsAtom);
+  const enabled = useCanNavigateHistory(direction);
+  const label = direction === "back" ? "Go back" : "Go forward";
+  const shortcutLabel = shortcutLabelForCommand(
+    keybindings,
+    direction === "back" ? "navigation.back" : "navigation.forward",
+  );
+  const Icon = direction === "back" ? ArrowLeftIcon : ArrowRightIcon;
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            aria-label={label}
+            className={cn(
+              "[-webkit-app-region:no-drag]",
+              onBackdrop && "relative top-auto translate-y-0",
+            )}
+            disabled={!enabled}
+            onClick={() => navigateHistory(direction)}
+            size="icon-sm"
+            variant={onBackdrop ? "media-navigation" : "ghost"}
+          />
+        }
+      >
+        <Icon className="size-3.5" />
+      </TooltipTrigger>
+      <TooltipPopup side="bottom">
+        {label}
+        {shortcutLabel ? ` (${shortcutLabel})` : ""}
+      </TooltipPopup>
+    </Tooltip>
   );
 }
 
@@ -137,7 +203,7 @@ function SidebarBrand() {
        both shrink-0; the link may still shrink so a 208px sidebar cannot
        overflow the header. */
     <Link
-      aria-label="Go to threads"
+      aria-label="no3y Code home"
       // oxlint-disable-next-line shadcn/no-unknown-classes -- a theme.custom.css hook
       className="sidebar-brand ml-auto hidden h-4 w-fit min-w-0 items-center gap-1 overflow-hidden rounded-md pr-4 text-sidebar-foreground outline-hidden ring-ring focus-visible:ring-2 md:flex"
       to="/"
@@ -260,23 +326,21 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu({
           {/* fork:end fork-sidebar-chrome */}
         </>
       )}
+      <SidebarThreadUndoNotice />
       <SidebarUpdatePill />
     </SidebarMenu>
   );
 });
 
 export const SidebarChromeFooter = memo(function SidebarChromeFooter({
-  showUndoNotice = false,
   /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */
   hideUsage = false,
 }: {
   hideUsage?: boolean;
   /* fork:end fork-sidebar-chrome */
-  showUndoNotice?: boolean;
 }) {
   return (
     <SidebarFooter>
-      {showUndoNotice ? <SidebarThreadUndoNotice /> : null}
       <SidebarProviderUpdatePill />
       <SidebarUpdateArchitectureWarning />
       {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome */}

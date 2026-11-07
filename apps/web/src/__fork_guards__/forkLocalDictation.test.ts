@@ -2,176 +2,53 @@
 /**
  * Fork guard — see `.fork/customizations.yaml#fork-local-dictation`.
  *
- * Pins the wire format the packaged helper expects, the draft-insertion
- * contract, the composer owning its session, and the root-mounted hotkey host
- * with its fallback session. Thread targeting across navigation and the
- * no-composer fallback are guarded in `forkDictationThreadOwnership.test.tsx`.
+ * Pins the fork's dictation controls drawn over upstream's environment speech
+ * input: the composer feeds them `speechInput`, the mic and the send-slot
+ * check and X, and the root-mounted right Command host. The tap itself is
+ * guarded in `forkDictationHotkey.test.ts`.
  */
 import * as NodeFS from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
-import { VoiceInputController } from "@t3tools/client-runtime/voice-input";
-import { encodeVoiceWav, releaseRecording } from "../custom/voice/BrowserVoiceRecorder";
 import { cssRules } from "./cssRules";
 
 const read = (path: string) => NodeFS.readFileSync(new URL(path, import.meta.url), "utf8");
 
 describe("fork local dictation", () => {
-  it("encodes bounded mono 16kHz PCM with correctly clipped signed samples", () => {
-    const wav = encodeVoiceWav(new Float32Array([-2, -1, 0, 1, 2]));
-    const view = new DataView(wav.buffer);
-    expect(new TextDecoder().decode(wav.slice(0, 4))).toBe("RIFF");
-    expect(view.getUint32(24, true)).toBe(16_000);
-    expect(view.getUint16(22, true)).toBe(1);
-    expect(view.getUint32(40, true)).toBe(10);
-    expect([0, 1, 2, 3, 4].map((i) => view.getInt16(44 + i * 2, true))).toEqual([
-      -32768, -32768, 0, 32767, 32767,
-    ]);
-  });
-
-  it("inserts speech at the captured cursor and leaves sending to the user", async () => {
-    let text = "Fix  please";
-    let cursor = 4;
-    const controller = new VoiceInputController({
-      recorder: {
-        uri: "blob:recording",
-        prepareToRecordAsync: async () => {},
-        record: () => {},
-        stop: async () => {},
-      },
-      getTranscriber: () => ({
-        prepare: async () => ({ locale: "en", transcribe: async () => "the bug" }),
-      }),
-      requestPermission: async () => ({ granted: true, canAskAgain: true }),
-      configureRecording: async () => {},
-      releaseRecording: async () => {},
-      deleteRecording: releaseRecording,
-      readDraft: () => ({
-        ownerKey: "thread-1",
-        text,
-        selection: { start: cursor, end: cursor },
-        revision: 0,
-      }),
-      commitDraft: (next, selection) => {
-        text = next;
-        cursor = selection.start;
-      },
-      onStateChange: () => {},
-    });
-    await controller.start();
-    await controller.stop();
-    expect(text).toBe("Fix the bug please");
-    expect(cursor).toBe(11);
-    expect(controller.currentState.phase).toBe("idle");
-  });
-
-  it("discards a transcript only when the draft text itself changed underneath it", async () => {
-    // What the composer wiring must satisfy: the read at commit time is
-    // compared against the read at start. A question arriving mid-recording
-    // swaps the editor to its answer field, so the composer must keep
-    // reading the prompt draft (see the guard below) or the transcript is
-    // judged stale and lost.
-    const run = async (drafts: { atStart: string; atStop: string }) => {
-      // The controller reads once at start, once as recording begins (the
-      // captured draft) and once at commit; only the commit read differs.
-      let recording = false;
-      let committed: string | null = null;
-      const controller = new VoiceInputController({
-        recorder: {
-          uri: "blob:recording",
-          prepareToRecordAsync: async () => {},
-          record: () => {},
-          stop: async () => {},
-        },
-        getTranscriber: () => ({
-          prepare: async () => ({ locale: "en", transcribe: async () => "the bug" }),
-        }),
-        requestPermission: async () => ({ granted: true, canAskAgain: true }),
-        configureRecording: async () => {},
-        releaseRecording: async () => {},
-        deleteRecording: releaseRecording,
-        readDraft: () => ({
-          ownerKey: "thread-1",
-          text: recording ? drafts.atStop : drafts.atStart,
-          selection: { start: 4, end: 4 },
-          revision: 0,
-        }),
-        commitDraft: (next) => {
-          committed = next;
-        },
-        onStateChange: () => {},
-      });
-      await controller.start();
-      recording = true;
-      await controller.stop();
-      return { committed, phase: controller.currentState.phase };
-    };
-    // Prompt preserved across the question: the transcript lands in it.
-    expect(await run({ atStart: "Fix  please", atStop: "Fix  please" })).toEqual({
-      committed: "Fix the bug please",
-      phase: "idle",
-    });
-    // The answer field read instead (the bug): the transcript is discarded.
-    const swapped = await run({ atStart: "Fix  please", atStop: "" });
-    expect(swapped.committed).toBeNull();
-  });
-
-  it("keeps the composer owning its session, with the root hotkeys, bridge and helper wired", () => {
+  it("draws the fork's controls over upstream's speech input, with the root hotkey wired", () => {
     const composer = read("../components/chat/ChatComposer.tsx");
     const control = read("../custom/voice/ForkDictationControl.tsx");
-    const controller = read("../custom/voice/useForkDictationController.ts");
-    const session = read("../custom/voice/forkDictationSession.ts");
+    const dictationModule = read("../custom/voice/forkDictation.ts");
     const hotkeyHost = read("../custom/voice/ForkDictationHotkeyHost.tsx");
     const rootRoute = read("../routes/__root.tsx");
     const preload = read("../../../desktop/src/preload.ts");
-    const runtimeExports = read("../../../../packages/client-runtime/src/voice-input/index.ts");
     const packaging = read("../../../../scripts/build-desktop-artifact.ts");
     const theme = read("../theme.custom.css");
     const shell = read("../custom/ComposerShell.tsx");
-    // Composer holds the hook and reads the gates directly, like mobile:
-    // the send gate is the first clause of sendDisabledReason and the editor
-    // gate sits in the prompt editor's `disabled` chain.
-    expect(composer).toContain("useForkDictationController({");
-    expect(composer).toMatch(
-      /const sendDisabledReason =\s*(?:\/\*[^*]*\*\/\s*)*\(dictation\.blocksSubmission\s*\?/u,
+    // Upstream's speech input owns the session; the fork's controls read it
+    // through one adapter, and the composer registers it with the root hotkey.
+    expect(composer).toContain("const speechInput = useEnvironmentSpeechInput({");
+    expect(composer).toContain("const dictation = forkDictationFromSpeech(speechInput);");
+    expect(composer).toContain(
+      "useForkDictationHotkeyTarget(dictation, forkDictationStartBlocked);",
     );
-    expect(composer).toMatch(
-      // Upstream's editor gate no longer lists isConnecting or the approval state.
-      /disabled=\{\s*(?:\/\*[^*]*\*\/\s*)*dictation\.freezesEditor \|\|/u,
-    );
+    expect(composer).toMatch(/activePendingIsResponding \|\|\s*speechInput\.freezesEditor\s*\}/u);
     expect(composer).toContain("<ForkDictationNotices dictation={dictation} />");
-    // A session pins the field it started in. A prompt session outlived by a
-    // question or approval keeps the store's `prompt` as its draft, never
-    // `promptRef` (which mirrors the answer field then) and never the editor
-    // snapshot (which is the answer editor). A session started on a question
-    // that takes a typed answer reads and writes the editor, where onPromptChange
-    // routes it into that answer; once the question leaves, it reads nothing.
-    const hookArgument = composer.slice(
-      composer.indexOf("useForkDictationController({"),
-      composer.indexOf(
-        "/* fork:end fork-local-dictation */",
-        composer.indexOf("useForkDictationController({"),
-      ),
-    );
-    expect(hookArgument).toMatch(
-      /if \(starting\) dictationFieldRef\.current = dictationEditorField;\s*if \(dictationFieldRef\.current === dictationEditorField\) return readComposerSnapshot\(\);\s*if \(dictationFieldRef\.current !== "prompt"\) return null;\s*return \{ value: prompt, expandedCursor: prompt\.length \}/u,
-    );
-    expect(hookArgument).toMatch(
-      /if \(dictationFieldRef\.current !== dictationEditorField\) \{\s*setPrompt\(text\);\s*return;/u,
-    );
+    // First use opens upstream's setup dialog, rendered beside the slot.
+    expect(composer).toMatch(/const composerPrimaryActionSlot = \([\s\S]*?<VoiceInputSetup/u);
+    // Upstream's own composer mic and recording pill are not rendered.
+    expect(composer).not.toContain("<ComposerSpeechButton");
+    expect(composer).not.toContain("<ComposerSpeechRecordingPill");
     expect(composer).toMatch(
-      /const dictationDisabled =[^;]*\(pendingUserInputs\.length > 0 && !dictationAnswersQuestion\)/u,
+      /const forkDictationStartBlocked =[^;]*\(pendingUserInputs\.length > 0 && !dictationAnswersQuestion\)/u,
     );
     expect(composer).toMatch(
       /const dictationAnswersQuestion =[^;]*allowCustomAnswer !== false[^;]*!activePendingIsResponding;/u,
     );
     // Not on a compact viewport: there Next/Submit sit in a strip below the
-    // editor with no slot for the session's controls, so a question stays
-    // dictation-free rather than starting a recording nothing can end.
+    // editor with no slot for the session's controls.
     expect(composer).toMatch(
       /const dictationCompactViewport = useMediaQuery\("max-sm"\);\s*const dictationAnswersQuestion =\s*!dictationCompactViewport &&/u,
     );
-    expect(hookArgument).not.toContain("promptRef.current =");
-    expect(hookArgument).not.toContain("value: promptRef.current");
     // A live session borrows the send button. ChatComposer says when it owns
     // the slot: for the whole of a live session (the check, with a cancel X
     // beside it), never while idle — the mic lives in the control row, so an
@@ -194,7 +71,7 @@ describe("fork local dictation", () => {
       "pendingAction={dictationOwnsPrimaryAction ? null : pendingPrimaryAction}",
     );
     expect(composer).toContain(
-      "dictationOwnsPrimaryAction ? { dictation, disabled: dictationDisabled } : null",
+      "dictationOwnsPrimaryAction ? { dictation, disabled: forkDictationStartBlocked } : null",
     );
     // Since the orchestrator-V2 sync upstream renders stop alone (no send
     // beside it); the fork keeps the mic to stop's left on that branch and
@@ -231,7 +108,7 @@ describe("fork local dictation", () => {
     // a live session's X and check hold the send slot, and never rides the
     // primary cluster.
     expect(composer).toMatch(
-      /modeControls=\{\s*<>\s*\{composerAttachAction\}[\s\S]{0,400}?<ForkDictationGhostMic\s*dictation=\{dictation\}\s*disabled=\{dictationDisabled \|\| dictation\.blocksSubmission\}\s*\/>[\s\S]{0,120}?\{composerModeControls\}/u,
+      /modeControls=\{\s*<>\s*\{composerAttachAction\}[\s\S]{0,400}?<ForkDictationGhostMic\s*dictation=\{dictation\}\s*disabled=\{forkDictationStartBlocked \|\| dictation\.blocksSubmission\}\s*\/>[\s\S]{0,120}?\{composerModeControls\}/u,
     );
     expect(composer).not.toMatch(
       /const composerPrimaryActionSlot = \([\s\S]{0,1500}?<ForkDictationGhostMic/u,
@@ -253,7 +130,7 @@ describe("fork local dictation", () => {
     // speech, newest at the right edge, painted in its own colour (the
     // foreground; pure white in dark like the X).
     expect(control).toMatch(
-      /\{busy \? <VoiceLevelTimeline subscribe=\{dictation\.subscribeLevel\} \/> : null\}/u,
+      /\{busy \? <VoiceLevelTimeline level=\{dictation\.level\} \/> : null\}/u,
     );
     expect(control).toContain("<canvas");
     expect(control).toContain('data-fork-dictation-timeline=""');
@@ -262,34 +139,15 @@ describe("fork local dictation", () => {
     expect(control).not.toContain('"#ffffff"');
     expect(theme).toMatch(/\.dark \[data-fork-dictation-timeline\]\s*\{[^}]*color:\s*#ffffff/u);
     expect(theme).toMatch(/\[data-fork-dictation-timeline\]\s*\{[^}]*min-width:\s*96px/u);
-    expect(controller).toContain("subscribeLevel");
-    // The composer owns its session (built once, disposed on unmount) and
-    // registers it with the root hotkeys while mounted (while its pane is
-    // focused, in a split: fork-split-threads); the registration effect is
-    // declared first, so unmount unregisters before it disposes. The root host owns a
-    // second, fallback session for taps with no composer to land in, presents
-    // it as a toast whose transcript can be copied, and disposes it with
-    // itself; closing a live toast by any route cancels through the toast's
-    // own close callback.
-    expect(session).toContain("new VoiceInputController");
-    expect(controller).toContain("createDictationSession(bridge, {");
-    expect(controller).toContain("registerDictationComposer({");
-    expect(controller).toMatch(
-      /return registerDictationComposer\(\{[\s\S]*?useEffect\(\(\) => \(\) => controller\?\.dispose\(\), \[controller\]\);/u,
+    // The registration reads a layout-phase mirror: ChatComposer is memoized,
+    // so an effect event would keep the first thread's closure.
+    expect(dictationModule).toContain(
+      "useLayoutEffect(() => {\n    latest.current = { dictation, disabled };",
     );
-    expect(controller).not.toContain("addEventListener");
+    expect(dictationModule).toContain("useOwnsGlobalInput()");
+    expect(dictationModule).not.toContain("useEffectEvent");
     expect(rootRoute).toContain("<ForkDictationHotkeyHost />");
-    expect(hotkeyHost).toContain("createDictationFallback(bridge, createToastPresenter)");
-    expect(hotkeyHost).toContain("installDictationHotkeys(fallback)");
-    expect(hotkeyHost).toMatch(/uninstall\(\);\s*fallback\.dispose\(\);/u);
-    expect(hotkeyHost).toMatch(/children: "Copy",\s*onClick:/u);
-    expect(hotkeyHost).toContain("writeTextToClipboard(text");
-    expect(hotkeyHost).toMatch(/onClose: \(\) => \{[^}]*actions\.cancel\(\)/u);
-    expect(hotkeyHost).toContain("onClose: actions.clearError");
-    // Starting is not gated on focus inside the composer; Escape still is.
-    expect(session).toMatch(
-      /if \(!unfocused && composer\?\.contains\(target\) !== true\) return;/u,
-    );
+    expect(hotkeyHost).toContain("installForkDictationHotkey()");
     // In a started thread an empty prompt keeps the compact row: the cluster
     // fills the editor's place (gap 0, prompt collapsed, actions flex). Typed
     // text turns the row into the draft box's grid: the cluster spans the row
@@ -371,7 +229,7 @@ describe("fork local dictation", () => {
     // left the editor, a live recording settles instead of running with no
     // check on screen, and the keyboard cannot start one there.
     expect(composer).toMatch(
-      /if \(!dictationControlsVisible \|\| dictationFieldRef\.current !== dictationEditorField\) \{\s*settleDictationWithoutControls\(\);/u,
+      /if \(dictationLive && !dictationControlsVisible\) settleDictationWithoutControls\(\);/u,
     );
     expect(composer).toMatch(/const dictationControlsVisible =[^;]*showPlanFollowUpPrompt/u);
     // A pending question takes the slot on every viewport (ComposerPrimaryActions
@@ -381,25 +239,31 @@ describe("fork local dictation", () => {
     // with no check. The strip's own case rides on dictationAnswersQuestion,
     // which is false on a compact viewport.
     expect(composer).toMatch(
-      /const dictationControlsVisible =[^;]*\(pendingPrimaryAction === null \|\| dictationAnswersQuestion\)/u,
+      /const dictationControlsVisible =[^;]*\(pendingUserInputs\.length === 0 \|\| dictationAnswersQuestion\)/u,
     );
     expect(composer).not.toMatch(
       /const dictationControlsVisible =[^;]*showMobilePendingAnswerActions/u,
     );
-    expect(composer).toMatch(/const dictationDisabled =[^;]*showPlanFollowUpPrompt/u);
+    expect(composer).toMatch(/const forkDictationStartBlocked =[^;]*showPlanFollowUpPrompt/u);
+    // Fork start gates stay out of upstream's `disabled`, which also cancels a live recording.
+    expect(composer).not.toMatch(
+      /const dictationDisabled =[^;]*(?:isSendBusy|showPlanFollowUpPrompt)/u,
+    );
+    // A live session keeps stop beside the check while a turn runs.
+    expect(composer).toContain("hasSendableContent={composerSendState.hasSendableContent}");
     // The mic follows the editor's gate, not send's: an unassigned new-agent
     // draft (fork-new-agent-draft) blocks send until a project is chosen but
     // keeps the prompt editable, and dictation only writes into the prompt.
-    expect(composer).toMatch(/const dictationDisabled =[^;]*promptLockedForProject;/u);
+    expect(composer).toMatch(/const forkDictationStartBlocked =[^;]*promptLockedForProject/u);
     expect(composer).not.toMatch(/const dictationDisabled =[^;]*projectSelectionRequired/u);
     // A send in flight keeps the spinner in the slot; the ghost mic beside
     // typed text and the keyboard must not start a session over it.
-    expect(composer).toMatch(/const dictationDisabled =[^;]*isSendBusy/u);
-    // The notices (download percentage, error popover) render beside the slot
+    expect(composer).toMatch(/const forkDictationStartBlocked =[^;]*isSendBusy/u);
+    // The notices (the error popover) render beside the slot
     // whatever it shows, so a failed transcription is reported even after typed
     // text has put send back. The buttons render state only.
     expect(control).toContain("export function ForkDictationNotices");
-    expect(control).toContain("if (!dictation.isAvailable) return null");
+    expect(control).toContain("if (!dictation.isAvailable || !dictation.error) return null");
     expect(control).not.toContain("new VoiceInputController");
     // Microphone hover is "Dictate" on the frosted glass tooltip, a step
     // larger than the default chip. Recording/transcribing keep their labels.
@@ -420,15 +284,16 @@ describe("fork local dictation", () => {
       /\[data-slot="tooltip-popup"\]\[data-fork-glass-tooltip\]\s*\{[^}]*font-size:\s*13px/u,
     );
     // Toggle is a tap of right Command, not a chord that would steal ⌘C.
-    expect(session).toContain('event.code === "MetaRight"');
-    expect(session).not.toContain('event.code === "Space"');
+    expect(dictationModule).toContain('event.code === "MetaRight"');
+    expect(dictationModule).not.toContain('event.code === "Space"');
     expect(control).toContain("Dictate (Right Command)");
     expect(control).not.toContain("Ctrl+Shift+Space");
-    // Fork IPC stays out of shared packages.
-    expect(preload).toContain('"fork:voice-transcribe"');
-    expect(preload).not.toContain("@t3tools/client-runtime");
-    expect(runtimeExports).not.toMatch(/^\s*\w.*\bfork/imu);
-    expect(packaging).toContain('to: "voice-input"');
+    // The fork's local whisper.cpp engine is retired: no voice IPC, no helper.
+    expect(preload).not.toContain("fork:voice-");
+    expect(packaging).not.toContain("voice-input");
+    expect(packaging).not.toContain("build-voice-input");
+    // Signed builds still claim the microphone for upstream's dictation.
     expect(packaging).toContain("NSMicrophoneUsageDescription");
+    expect(packaging).toContain("com.apple.security.device.audio-input");
   });
 });

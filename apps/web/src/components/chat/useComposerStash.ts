@@ -61,6 +61,7 @@ import {
   useState,
 } from "react";
 import { BackgroundThreadContext } from "./backgroundThread";
+import { isInSideChatPane } from "../../lib/sideChatPane";
 import { useStableCallback } from "../../hooks/useStableCallback";
 /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
 import { useOwnsGlobalInput } from "~/custom/splitThreads/splitPaneContext";
@@ -709,7 +710,11 @@ export function useComposerStash(input: {
     /* fork:end fork-split-threads */
     return registerCommands(
       { "composer.stash": handleStashShortcut },
-      { capture: true, context: readShortcutContext },
+      {
+        capture: true,
+        context: readShortcutContext,
+        when: (event) => !isInSideChatPane(event.target),
+      },
     );
   }, [
     backgroundThread,

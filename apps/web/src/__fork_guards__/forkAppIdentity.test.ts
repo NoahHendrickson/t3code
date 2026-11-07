@@ -194,6 +194,8 @@ describe("fork guard: fork-app-identity", () => {
       ["assets/fork/n3-web-favicon-16x16.png", "apps/web/public/favicon-16x16.png"],
       ["assets/fork/n3-web-favicon-32x32.png", "apps/web/public/favicon-32x32.png"],
       ["assets/fork/n3-dev-web-apple-touch-180.png", "apps/web/public/apple-touch-icon.png"],
+      ["assets/fork/n3-dev-web-icon-192x192.png", "apps/web/public/icon-192x192.png"],
+      ["assets/fork/n3-dev-web-icon-512x512.png", "apps/web/public/icon-512x512.png"],
     ] as const) {
       expect(NodeFS.readFileSync(NodePath.join(repoRoot, target))).toEqual(
         NodeFS.readFileSync(NodePath.join(repoRoot, source)),
@@ -334,17 +336,12 @@ describe("fork guard: fork-app-identity", () => {
   });
 
   it("keeps the pre-ready early resolver on the fork's identity, agreeing with DesktopEnvironment", () => {
-    // Upstream's v0.0.32 pre-ready refactor re-derives the WM class and the
-    // settings base dir from scratch in DesktopEarlyElectronStartup — it never
-    // reads DesktopEnvironment — so the fork values must be restated there and
-    // must agree with the late path. The sync that introduced the file shipped
-    // WM class "t3code" and a ~/.t3 settings read while every guard stayed
-    // green; this is the tripwire for the next such file.
+    // Upstream's pre-ready refactor re-derives the settings base dir from
+    // scratch in DesktopEarlyElectronStartup without reading DesktopEnvironment,
+    // so the fork value is restated there. The sync that introduced the file
+    // shipped a ~/.t3 settings read while every guard stayed green.
     const early = read(DESKTOP_EARLY_STARTUP);
     const environment = read(DESKTOP_ENVIRONMENT);
-    // Same WM class pair as the late path (DesktopEnvironment.linuxWmClass).
-    expect(early).toContain('? "t3code-dev" : "t3code-fork"');
-    expect(early).not.toContain('? "t3code-dev" : "t3code"');
     // Same base-dir poles as the late path: upstream's ~/.t3 only for
     // unpackaged development, ~/.t3-fork otherwise, tilde-expanded override.
     expect(early).toContain('".t3-fork"');
@@ -393,7 +390,6 @@ describe("fork guard: fork-app-identity", () => {
     // Renaming these would strand the dev state that exists today, and `vp dev`
     // in this repo is already the fork — there is nothing to collide with.
     const environment = read(DESKTOP_ENVIRONMENT);
-    expect(environment).toContain('"t3code-dev"');
     expect(environment).toContain('"com.t3tools.t3code.dev"');
     // The Electron profile pair moved to DesktopUserData with upstream's V2.
     expect(read(DESKTOP_USER_DATA)).toContain('{ current: "t3code-dev", legacy: "T3 Code (Dev)" }');

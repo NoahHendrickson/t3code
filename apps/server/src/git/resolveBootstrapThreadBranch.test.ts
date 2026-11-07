@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest";
-import * as Data from "effect/Data";
+import * as Schema from "effect/Schema";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import { ProjectId, ThreadId } from "@t3tools/contracts";
@@ -12,7 +12,9 @@ import {
   resolveBootstrapThreadBranch,
 } from "./resolveBootstrapThreadBranch.ts";
 
-class TestFailure extends Data.TaggedError("TestFailure")<{ readonly detail: string }> {}
+class TestFailure extends Schema.TaggedError<TestFailure>()("TestFailure", {
+  detail: Schema.String,
+}) {}
 
 type Deps = BootstrapThreadBranchDeps<TestFailure, TestFailure>;
 

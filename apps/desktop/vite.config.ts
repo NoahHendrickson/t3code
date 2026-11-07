@@ -23,29 +23,26 @@ export default defineConfig({
   run: {
     tasks: {
       build: {
-        // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
-        // Literal strings on purpose: knip reads these to find script entries.
-        // `--optional` skips the whisper.cpp helper when CMake is missing; only
-        // the packaged artifact (scripts/build-desktop-artifact.ts) requires it.
         command:
-          "node scripts/build-voice-input.mjs --optional && node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && vp pack",
-        // fork:end fork-local-dictation
+          "node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && vp pack",
+        dependsOn: ["t3#build"],
+        cache: false,
+      },
+      // CI bundle jobs skip the Linux browser secret helper; packaging stages one per arch.
+      "build:bundle": {
+        command: "node scripts/build-preview-annotation-css.mjs && vp pack",
         dependsOn: ["t3#build"],
         cache: false,
       },
       dev: {
-        // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
         command:
-          "node scripts/build-voice-input.mjs --optional && node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && cross-env T3CODE_DESKTOP_DEV=1 vp pack --watch",
-        // fork:end fork-local-dictation
+          "node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && cross-env T3CODE_DESKTOP_DEV=1 vp pack --watch",
         dependsOn: ["t3#build"],
         cache: false,
       },
       "dev:bundle": {
-        // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
         command:
-          "node scripts/build-voice-input.mjs --optional && node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && vp pack --watch",
-        // fork:end fork-local-dictation
+          "node scripts/build-browser-secret.mjs && node scripts/build-preview-annotation-css.mjs && vp pack --watch",
         cache: false,
       },
       "dev:electron": {
@@ -53,9 +50,9 @@ export default defineConfig({
         dependsOn: ["t3#build"],
         cache: false,
       },
-      // tsc (tsc-rs) rewrites the tsbuildinfo it reads, which keeps a task out of the cache.
+      // A local tsbuildinfo is leftover build state, not a typecheck input.
       typecheck: {
-        command: "tsc --noEmit",
+        command: "effect-tsgo tsrs --noEmit",
         cache: { input: [{ auto: true }, "!*.tsbuildinfo"] },
       },
     },
@@ -111,7 +108,7 @@ export default defineConfig({
       dts: false,
       sourcemap: true,
       outExtensions: () => ({ js: ".cjs" }),
-      entry: ["src/boot.ts", "src/compileCache.ts"],
+      entry: ["src/boot.ts", "src/compileCache.ts", "src/serverCompileCache.ts"],
       clean: false,
       deps: {
         neverBundle: (id) => id === "./main.cjs" || id === "./compileCache.cjs",

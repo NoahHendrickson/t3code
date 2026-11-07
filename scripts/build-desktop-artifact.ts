@@ -78,6 +78,8 @@ export const FORK_WEB_ICON_ASSETS = {
   favicon16Png: "assets/fork/n3-web-favicon-16x16.png",
   favicon32Png: "assets/fork/n3-web-favicon-32x32.png",
   appleTouchIconPng: "assets/fork/n3-web-apple-touch-180.png",
+  icon192Png: "assets/fork/n3-web-icon-192x192.png",
+  icon512Png: "assets/fork/n3-web-icon-512x512.png",
 } as const;
 // fork:end fork-app-identity
 const APPLE_TEAM_ID_PATTERN = /^[A-Z0-9]{10}$/u;
@@ -702,6 +704,15 @@ export class DesktopBuildDistDirectoryMissingError extends Schema.TaggedError<De
   }
 }
 
+export class DesktopBuildArtifactCopyError extends Schema.TaggedError<DesktopBuildArtifactCopyError>()(
+  "DesktopBuildArtifactCopyError",
+  { from: Schema.String, to: Schema.String, cause: Schema.Defect() },
+) {
+  override get message(): string {
+    return `Failed to copy build artifact ${this.from} to ${this.to}.`;
+  }
+}
+
 export class DesktopBuildNoArtifactsProducedError extends Schema.TaggedError<DesktopBuildNoArtifactsProducedError>()(
   "DesktopBuildNoArtifactsProducedError",
   {
@@ -1004,12 +1015,6 @@ export const DESKTOP_FILE_EXCLUSIONS = [
   "!apps/desktop/resources/browser-secret/**/*",
   "!apps/desktop/prod-resources/browser-secret",
   "!apps/desktop/prod-resources/browser-secret/**/*",
-  // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
-  "!apps/desktop/resources/voice-input",
-  "!apps/desktop/resources/voice-input/**/*",
-  "!apps/desktop/prod-resources/voice-input",
-  "!apps/desktop/prod-resources/voice-input/**/*",
-  // fork:end fork-local-dictation
   "!apps/desktop/prod-resources/windows-server",
   "!apps/desktop/prod-resources/windows-server/**/*",
   "!apps/desktop/prod-resources/wsl-runtime.tar.gz",
@@ -1028,14 +1033,15 @@ export const LINUX_FILE_EXCLUSIONS = [
   "!**/node_modules/node-pty/prebuilds/darwin-*/**/*",
 ] as const;
 
-// node-pty bundles both Darwin architectures; only universal apps need both.
+// Native packages (node-pty, objc-js) ship prebuilds for both Darwin architectures; only universal
+// apps need both. macOS 27 warns that an arm64 app holding x64-only code won't open on macOS 28.
 export function resolveMacFileExclusions(arch?: typeof BuildArch.Type) {
   if (arch === undefined || arch === "universal") {
     return [...MAC_FILE_EXCLUSIONS];
   }
 
   const unusedArch = arch === "arm64" ? "x64" : "arm64";
-  return [...MAC_FILE_EXCLUSIONS, `!**/node_modules/node-pty/prebuilds/darwin-${unusedArch}/**/*`];
+  return [...MAC_FILE_EXCLUSIONS, `!**/node_modules/**/prebuilds/darwin-${unusedArch}/**/*`];
 }
 // Large ASAR sidecars avoid NSIS extracting thousands of loose files during installs and updates.
 export const WINDOWS_SERVER_ASAR_RESOURCE = "server.asar";
@@ -1113,11 +1119,6 @@ export const DESKTOP_EXTRA_RESOURCES = [
     to: "resource-monitor",
   },
 ] as const;
-// fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
-export const MAC_VOICE_INPUT_EXTRA_RESOURCES = [
-  { from: "apps/desktop/prod-resources/voice-input", to: "voice-input" },
-] as const;
-// fork:end fork-local-dictation
 export const LINUX_CAPTURE_EXTRA_RESOURCES = [
   {
     from: "apps/desktop/prod-resources/hyprland-capture",
@@ -2147,7 +2148,7 @@ const NativeMarkerManifest = Schema.Struct({
   dependencies: Schema.optional(Schema.Record(Schema.String, Schema.String)),
   optionalDependencies: Schema.optional(Schema.Record(Schema.String, Schema.String)),
 });
-const decodeNativeMarkerManifest = Schema.decodeUnknownSync(
+const decodeNativeMarkerManifest = Schema.decodeUnknownOption(
   Schema.fromJsonString(NativeMarkerManifest),
 );
 
@@ -2187,13 +2188,12 @@ const hasNativeLoaderMarkers = Effect.fn("hasNativeLoaderMarkers")(function* (pa
   if (!(yield* exists(manifestPath))) return false;
   const source = yield* fs.readFileString(manifestPath).pipe(Effect.orElseSucceed(() => ""));
   if (source === "") return false;
-  const manifest = yield* Effect.try(() => decodeNativeMarkerManifest(source)).pipe(
-    Effect.orElseSucceed(() => null),
-  );
-  if (manifest === null) return false;
-  return Object.keys({ ...manifest.dependencies, ...manifest.optionalDependencies }).some(
-    (dependency) => dependency.startsWith("node-gyp-build"),
-  );
+  const manifest = decodeNativeMarkerManifest(source);
+  if (Option.isNone(manifest)) return false;
+  return Object.keys({
+    ...manifest.value.dependencies,
+    ...manifest.value.optionalDependencies,
+  }).some((dependency) => dependency.startsWith("node-gyp-build"));
 });
 
 export const copyDirectoryPreservingSymlinks = Effect.fn("copyDirectoryPreservingSymlinks")(
@@ -2818,6 +2818,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   // fork:end fork-local-dictation
 ) {
   const buildConfig: Record<string, unknown> = {
+    afterPack: (yield* Path.Path).join(yield* RepoRoot, "scripts/prepare-server-compile-cache.cjs"),
     appId: DESKTOP_APP_ID,
     productName: resolveDesktopProductName(version),
     // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
@@ -2840,12 +2841,9 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
     // Disable smart unpack so native packages' JS/metadata stay archived and avoid slowing NSIS with loose files.
     ...(platform === "win"
       ? { asar: { smartUnpack: false }, asarUnpack: [WINDOWS_NATIVE_ASAR_UNPACK_GLOB] }
-      : {}),
+      : { asarUnpack: ["**/node_modules/@transcribe-cpp/**/*.{dylib,so,so.*}"] }),
     extraResources: [
       ...DESKTOP_EXTRA_RESOURCES,
-      // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
-      ...(platform === "mac" ? MAC_VOICE_INPUT_EXTRA_RESOURCES : []),
-      // fork:end fork-local-dictation
       ...(platform === "linux" ? LINUX_CAPTURE_EXTRA_RESOURCES : []),
       ...(platform === "linux" ? LINUX_BROWSER_SECRET_EXTRA_RESOURCES : []),
       ...(platform === "win" ? WINDOWS_SERVER_EXTRA_RESOURCES : []),
@@ -2889,7 +2887,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
         // fork:end fork-brand-name
         // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
         NSMicrophoneUsageDescription:
-          "no3y Code uses your microphone to transcribe prompts on your device, and lets commands run by terminals and coding agents use it.",
+          "no3y Code uses your microphone for voice input, and lets commands run by terminals and coding agents use it.",
         // fork:end fork-local-dictation
         // macOS lists an app under Default web browser only when it opens web
         // pages as documents as well as http and https links (see protocols).
@@ -2956,6 +2954,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
     buildConfig.toolsets = { appimage: "1.0.3" };
     const path = yield* Path.Path;
     const repoRoot = yield* RepoRoot;
+    buildConfig.afterPack = path.join(repoRoot, "scripts/linux-after-pack.ts");
     buildConfig.linux = {
       target: target === "AppImage" ? [target, "deb"] : [target],
       // fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity
@@ -3856,26 +3855,6 @@ const buildDesktopArtifactUnlocked = Effect.fn("buildDesktopArtifactUnlocked")(f
         verbose: options.verbose,
       });
   }
-  // fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
-  if (options.platform === "mac") {
-    yield* runCommand(
-      ChildProcess.make(
-        "node",
-        [
-          path.join(repoRoot, "apps/desktop/scripts/build-voice-input.mjs"),
-          "--platform",
-          options.platform,
-          "--arch",
-          options.arch,
-          "--output",
-          path.join(stageResourcesDir, "voice-input"),
-        ],
-        { cwd: repoRoot },
-      ),
-      { label: "build local speech helper", verbose: options.verbose },
-    );
-  }
-  // fork:end fork-local-dictation
   yield* stageBrowserSecret({
     repoRoot,
     stageResourcesDir,
@@ -4190,19 +4169,11 @@ const buildDesktopArtifactUnlocked = Effect.fn("buildDesktopArtifactUnlocked")(f
     yield* validateMacPackagedPayload({ stageDistDir, verbose: options.verbose });
   }
 
-  const stageEntries = yield* fs.readDirectory(stageDistDir);
-  yield* fs.makeDirectory(options.outputDir, { recursive: true });
-
-  const copiedArtifacts: string[] = [];
-  for (const entry of stageEntries) {
-    const from = path.join(stageDistDir, entry);
-    const stat = yield* fs.stat(from).pipe(Effect.orElseSucceed(() => null));
-    if (!stat || stat.type !== "File") continue;
-
-    const to = path.join(options.outputDir, entry);
-    yield* fs.copyFile(from, to);
-    copiedArtifacts.push(to);
-  }
+  const copiedArtifacts = yield* copyDesktopBuildArtifacts(
+    stageDistDir,
+    options.outputDir,
+    options.target === "dir",
+  );
 
   if (copiedArtifacts.length === 0) {
     return yield* new DesktopBuildNoArtifactsProducedError({
@@ -4222,6 +4193,43 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
 ) {
   const repoRoot = yield* RepoRoot;
   return yield* withDesktopBuildLock(repoRoot, buildDesktopArtifactUnlocked(options));
+});
+
+export const copyDesktopBuildArtifacts = Effect.fn("copyDesktopBuildArtifacts")(function* (
+  stageDistDir: string,
+  outputDir: string,
+  includeDirectories = false,
+) {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const stageEntries = yield* fs.readDirectory(stageDistDir);
+  yield* fs.makeDirectory(outputDir, { recursive: true });
+
+  const copiedArtifacts: string[] = [];
+  for (const entry of stageEntries) {
+    const from = path.join(stageDistDir, entry);
+    const stat = yield* fs.stat(from).pipe(Effect.orElseSucceed(() => null));
+    if (!stat || (stat.type !== "File" && !(includeDirectories && stat.type === "Directory")))
+      continue;
+
+    const to = path.join(outputDir, entry);
+    // Replace whatever a reused output dir already holds at this path. fs.cp refuses to
+    // overwrite a directory with a file or a file with a directory, and only merges into
+    // an existing directory, so a stale entry of either type must go first.
+    yield* fs.remove(to, { recursive: true, force: true });
+    yield* Effect.tryPromise({
+      try: () =>
+        NodeFSP.cp(from, to, {
+          recursive: true,
+          force: true,
+          verbatimSymlinks: true,
+        }),
+      catch: (cause) => new DesktopBuildArtifactCopyError({ from, to, cause }),
+    });
+    copiedArtifacts.push(to);
+  }
+
+  return copiedArtifacts;
 });
 
 const buildDesktopArtifactCli = Command.make("build-desktop-artifact", {

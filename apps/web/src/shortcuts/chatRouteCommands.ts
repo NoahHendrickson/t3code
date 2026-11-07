@@ -100,7 +100,11 @@ export function installChatRouteCommands(router: AnyRouter): () => void {
       void startNewAgentDraft(router, appAtomRegistry.get(primaryEnvironmentIdAtom));
       return;
     }
-    void startNewThreadFromContext(context);
+    // With no current or open project, such as when every project is archived, the
+    // draft asks for one, as the New agent button does.
+    void startNewThreadFromContext(context).then((started) => {
+      if (!started) void startNewAgentDraft(router, appAtomRegistry.get(primaryEnvironmentIdAtom));
+    });
     /* fork:end fork-new-agent-draft */
   };
 

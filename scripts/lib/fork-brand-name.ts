@@ -26,11 +26,8 @@ export const PRESERVED_PHRASES = [
   "T3 Code · ",
 ] as const;
 
-/** Modules whose "T3 Code" strings are identities (legacy profile names, dictation vocabulary). */
-export const EXCLUDED_MODULES = [
-  /\/apps\/desktop\/src\/app\/DesktopUserData\.ts$/u,
-  /\/apps\/desktop\/src\/fork\/voice\/LocalSpeechEngine\.ts$/u,
-] as const;
+/** Modules whose "T3 Code" strings are identities (legacy profile names). */
+export const EXCLUDED_MODULES = [/\/apps\/desktop\/src\/app\/DesktopUserData\.ts$/u] as const;
 
 const UPSTREAM_DISPLAY_NAME = "T3 Code";
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");

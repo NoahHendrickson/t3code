@@ -6,7 +6,16 @@
  * implicit fast-mode default, same Ultrathink detection) so the menu's
  * reasoning half reads and writes exactly what the traits picker did.
  */
-import type { ProviderOptionDescriptor, ProviderOptionSelections } from "@t3tools/contracts";
+import type {
+  ModelSelection,
+  ProviderDriverKind,
+  ProviderInstanceId,
+  ProviderOptionDescriptor,
+  ProviderOptionSelection,
+  ProviderOptionSelections,
+  ScopedThreadRef,
+  ServerProviderModel,
+} from "@t3tools/contracts";
 import {
   getProviderOptionCurrentValue,
   getProviderOptionDescriptors,
@@ -16,15 +25,26 @@ import {
 import {
   buildTraitsTriggerDisplay,
   buildUnavailableModelOptionDescriptors,
+  type PromptUltrathink,
 } from "../components/chat/TraitsPicker";
-import {
-  type renderProviderTraitsPicker,
-  withImplicitFastModeDefault,
-} from "../components/chat/composerProviderState";
+import { withImplicitFastModeDefault } from "../components/chat/composerProviderState";
+import type { DraftId } from "../composerDraftStore";
 import { getProviderModelCapabilities } from "../providerModels";
 
-/** The composer's traits input, as it already hands to the traits picker. */
-export type ComposerModelTraitsInput = Parameters<typeof renderProviderTraitsPicker>[0] & {
+/** The composer's traits input: the model, its options and where a pick persists. */
+export type ComposerModelTraitsInput = {
+  provider: ProviderDriverKind;
+  instanceId?: ProviderInstanceId;
+  threadRef?: ScopedThreadRef;
+  draftId?: DraftId;
+  model: string;
+  models: ReadonlyArray<ServerProviderModel>;
+  modelOptions: ReadonlyArray<ProviderOptionSelection> | undefined;
+  reportedModelSelection?: ModelSelection | null | undefined;
+  promptUltrathink: PromptUltrathink;
+  onPromptEdit: (edit: (prompt: string) => string) => void;
+  triggerLabelSeparator?: string;
+  planModeEnabled: boolean;
   /** Controlled editors persist options on their own draft rather than a conversation. */
   onModelOptionsChange?: (options: ProviderOptionSelections | undefined) => void;
 };

@@ -6,6 +6,7 @@ import { installNotificationBadge } from "./methods/notificationBadge.ts";
 import { getClientSettings, setClientSettings } from "./methods/clientSettings.ts";
 import { getConnectionCatalog, setConnectionCatalog } from "./methods/connectionCatalog.ts";
 import {
+  getHostEnvironmentId,
   getLocalEnvironmentEnabled,
   setLocalEnvironmentEnabled,
 } from "./methods/localEnvironment.ts";
@@ -36,10 +37,12 @@ import {
   getAppBranding,
   getLocalEnvironmentBootstraps,
   getLocalEnvironmentBearerToken,
-  getRelayTelemetryEnabled,
+  installRelayTelemetryEnabled,
   getSystemLocale,
+  getPreferredSystemLanguages,
   getWindowFullscreenState,
   openExternal,
+  readMedia,
   openSystemSettings,
   checkSystemPermission,
   pasteAsText,
@@ -84,15 +87,9 @@ import { setForkSidebarVibrancy } from "../fork/ForkSidebarVibrancy.ts";
 /* fork:begin fork-glass-floor-color — see .fork/customizations.yaml#fork-glass-floor-color */
 import { installForkGlassFloorColorIpc } from "../fork/ForkGlassFloorColor.ts";
 /* fork:end fork-glass-floor-color */
-/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-import { installVoiceInputIpc } from "../fork/voice/VoiceInputIpc.ts";
-/* fork:end fork-local-dictation */
 
 export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers")(function* () {
   const ipc = yield* DesktopIpc.DesktopIpc;
-  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-  yield* installVoiceInputIpc();
-  /* fork:end fork-local-dictation */
   yield* installNotificationBadge();
   yield* PreviewIpc.installPreviewEventForwarding();
 
@@ -103,12 +100,14 @@ export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers"
   yield* ipc.handleSync(takeLegacyLocalStorage);
   yield* ipc.handle(completeLegacyLocalStorage);
   yield* ipc.handleSync(getAppBranding);
-  yield* ipc.handleSync(getRelayTelemetryEnabled);
+  yield* installRelayTelemetryEnabled();
   yield* ipc.handleSync(getSystemLocale);
+  yield* ipc.handleSync(getPreferredSystemLanguages);
   yield* ipc.handleSync(getWindowFullscreenState);
   yield* ipc.handleSync(getLocalEnvironmentBootstraps);
   yield* ipc.handleSync(getLocalEnvironmentEnabled);
   yield* ipc.handle(setLocalEnvironmentEnabled);
+  yield* ipc.handle(getHostEnvironmentId);
   yield* ipc.handle(getLocalEnvironmentBearerToken);
 
   yield* ipc.handle(getClientSettings);
@@ -153,6 +152,7 @@ export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers"
   yield* ipc.handle(setTheme);
   yield* ipc.handle(showContextMenu);
   yield* ipc.handle(openExternal);
+  yield* ipc.handle(readMedia);
   yield* ipc.handle(receiveProviderAuthCallback);
   yield* ipc.handle(cancelProviderAuthCallback);
   yield* ipc.handle(openSystemSettings);

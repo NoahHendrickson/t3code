@@ -6,7 +6,8 @@ import { useComposerPendingUserInputCard } from "~/custom/useComposerPendingUser
 import { ComposerBanner } from "./ComposerBanner";
 import ChatMarkdown from "../ChatMarkdown";
 import { cn } from "~/lib/utils";
-import { type PendingUserInputDraftAnswer } from "~/pendingUserInput";
+import type { PendingUserInputDraftAnswer } from "@t3tools/client-runtime/state/pending-user-input";
+import { markdownProseDirection, textDirection } from "~/textDirection";
 import { type PendingUserInput } from "~/session-logic";
 
 interface PendingUserInputPanelProps {
@@ -120,9 +121,24 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
 
   const customAnswerActive = progress.customAnswer.trim().length > 0;
   const multiSelect = activeQuestion.multiSelect === true;
+  // Upstream: right-to-left prompts lay out and align right to left.
+  const promptDirection = markdownProseDirection(
+    prompt.questions
+      .flatMap((question) => [
+        question.header,
+        question.question,
+        ...question.options.flatMap((option) => [option.label, option.description ?? ""]),
+      ])
+      .join(" "),
+  );
+  const questionTextAlign = promptDirection === "rtl" ? "text-right" : "text-left";
 
   return (
-    <div data-fork-pending-user-input="true" className="flex flex-col gap-6 p-4">
+    <div
+      data-fork-pending-user-input="true"
+      dir={promptDirection}
+      className="flex flex-col gap-6 p-4"
+    >
       <div className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
         <span>Questions</span>
         {prompt.questions.length > 1 ? (
@@ -157,7 +173,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
               text={activeQuestion.question}
               cwd={cwd}
               threadRef={threadRef}
-              className="font-medium text-foreground"
+              className={cn("font-medium text-foreground", questionTextAlign)}
             />
             <p className="font-normal text-muted-foreground">
               {multiSelect ? "Select one or more" : "Select one"}
@@ -187,7 +203,8 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                     handleOptionSelection(activeQuestion.id, optionValue);
                   }}
                   className={cn(
-                    "group flex w-full flex-col gap-1 rounded-lg border p-2 text-left outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring/40",
+                    questionTextAlign,
+                    "group flex w-full flex-col gap-1 rounded-lg border p-2 outline-none transition-colors duration-150 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring/40",
                     isSelected
                       ? "border-foreground/24 bg-foreground/8 text-foreground"
                       : "border-transparent hover:bg-foreground/4",
@@ -197,7 +214,12 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                 >
                   <div className="flex items-center gap-2">
                     <OptionControl multiSelect={multiSelect} selected={isSelected} />
-                    <span className="text-sm font-medium text-foreground">{option.label}</span>
+                    <span
+                      className="text-sm font-medium text-foreground"
+                      dir={textDirection(option.label)}
+                    >
+                      {option.label}
+                    </span>
                   </div>
                   {option.description && option.description !== option.label ? (
                     <div className="flex w-full items-center pl-6">
@@ -206,6 +228,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                           "flex-1 text-sm font-normal",
                           isSelected ? "text-foreground/80" : "text-muted-foreground",
                         )}
+                        dir={textDirection(option.description)}
                       >
                         {option.description}
                       </span>

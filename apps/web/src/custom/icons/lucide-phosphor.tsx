@@ -258,6 +258,14 @@ import {
   Pause as PhPause,
   ShieldSlash as PhShieldSlash,
   StopCircle as PhStopCircle,
+  Waveform as PhWaveform,
+  TreeView as PhTreeView,
+  Translate as PhTranslate,
+  MicrophoneSlash as PhMicrophoneSlash,
+  Microphone as PhMicrophone,
+  Key as PhKey,
+  Eraser as PhEraser,
+  Buildings as PhBuildings,
   User as PhUser,
 } from "@phosphor-icons/react";
 import type { FC, ReactElement, SVGProps } from "react";
@@ -637,6 +645,17 @@ export const EllipsisVerticalIcon = icon("ellipsis-vertical", PhDotsThreeVertica
 // entry, /usage-limits and the load-balancing environment picker (#9875,
 // #9299, #7855) started importing these lucide names.
 export const ScaleIcon = icon("scale", PhScales, "duotone");
+export const MicIcon = icon("mic", PhMicrophone, "duotone");
+export const MicOffIcon = icon("mic-off", PhMicrophoneSlash, "duotone");
+export const KeyRoundIcon = icon("key-round", PhKey, "duotone");
+export const LanguagesIcon = icon("languages", PhTranslate, "duotone");
+export const AudioLinesIcon = icon("audio-lines", PhWaveform, "duotone");
+export const TypeIcon = icon("type", PhTextT, "duotone");
+export const MessageSquarePlusIcon = icon("message-square-plus", PhChatText, "duotone");
+export const EraserIcon = icon("eraser", PhEraser, "duotone");
+export const ListTreeIcon = icon("list-tree", PhTreeView, "duotone");
+export const BuildingIcon = icon("building", PhBuildings, "duotone");
+export const MessagesSquare = icon("messages-square", PhChatsCircle, "duotone");
 export const FolderTreeIcon = icon("folder-tree", PhTreeStructure, "duotone");
 export const BracesIcon = Braces;
 export const CircuitBoardIcon = icon("circuit-board", PhCircuitry, "duotone");

@@ -56,7 +56,7 @@ describe("DesktopEarlyElectronStartup", () => {
   });
 
   /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity */
-  it("resolves fork-owned state and WM class on a packaged build", () => {
+  it("resolves fork-owned state on a packaged build", () => {
     const options = resolveEarlyLinuxElectronOptions({
       env: { XDG_CURRENT_DESKTOP: "GNOME" },
       homeDirectory: "/home/user",
@@ -68,7 +68,6 @@ describe("DesktopEarlyElectronStartup", () => {
       },
     });
 
-    assert.equal(options.linuxWmClass, "t3code-fork");
     assert.equal(options.passwordStore, "kwallet6");
   });
 

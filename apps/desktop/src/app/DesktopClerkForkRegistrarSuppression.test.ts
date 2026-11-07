@@ -64,7 +64,10 @@ describe("DesktopClerk keyed-build registrar suppression", () => {
       return bridge;
     });
 
-    assert.equal(DesktopClerk.createDesktopClerkBridge("/tmp/t3-state", false), bridge);
+    assert.equal(
+      DesktopClerk.createDesktopClerkBridge("/tmp/t3-state", false, "/tmp/t3-user-data"),
+      bridge,
+    );
     assert.equal(registerSchemesAsPrivilegedSpy.mock.calls.length, 0);
 
     // The real registrar is back once the bridge call returns.
@@ -77,7 +80,9 @@ describe("DesktopClerk keyed-build registrar suppression", () => {
       throw new Error("bridge initialization failed");
     });
 
-    assert.throws(() => DesktopClerk.createDesktopClerkBridge("/tmp/t3-state", false));
+    assert.throws(() =>
+      DesktopClerk.createDesktopClerkBridge("/tmp/t3-state", false, "/tmp/t3-user-data"),
+    );
 
     Electron.protocol.registerSchemesAsPrivileged([]);
     assert.equal(registerSchemesAsPrivilegedSpy.mock.calls.length, 1);

@@ -20,7 +20,7 @@ function readSibling(relativePath: string): string {
 const routeView = readSibling("../components/ThreadRouteView.tsx");
 const chatView = readSibling("../components/ChatView.tsx");
 const sidebar = readSibling("../components/Sidebar.tsx");
-const dictation = readSibling("../custom/voice/useForkDictationController.ts");
+const dictation = readSibling("../custom/voice/forkDictation.ts");
 // Upstream moved the stash shortcut into useComposerStash (registerCommands).
 const composerStash = readSibling("../components/chat/useComposerStash.ts");
 const questionCard = readSibling("../custom/useComposerPendingUserInputCard.ts");
@@ -44,19 +44,24 @@ describe("fork guard: fork-split-threads", () => {
     // Effects that listen on the window or take focus on their own guard on
     // the pane: the snap-shot focus subscription, the timeline scroll keys,
     // thread-switch and window-focus refocus, menu actions and paste-to-focus.
-    expect(chatView).toMatch(/splitPane\.focused\s*\?[\s\S]{0,80}subscribeSnapShotComposerFocus/u);
+    // Upstream also gates them off inside a side chat pane (`embedded`).
+    expect(chatView).toMatch(
+      /splitPane\.focused && !embedded\s*\?[\s\S]{0,80}subscribeSnapShotComposerFocus/u,
+    );
     // The timeline scroll keys moved to timelineViewport's registerCommands observer,
     // which only releases live follow; both panes may hear it harmlessly.
     expect(chatView.match(/if \(!splitPane\.focused\) return;/gu)?.length).toBe(3);
     expect(chatView).toContain(
-      "usePasteToFocusComposer(splitPane.focused ? activeThreadId : null, composerRef);",
+      "usePasteToFocusComposer(splitPane.focused && !embedded ? activeThreadId : null, composerRef);",
     );
     // The focus primitive itself stays ungated: a pane's own controls use it.
     expect(chatView).toMatch(
       /const focusComposer = \(\) => \{\s*composerRef\.current\?\.focusAtEnd\(\);/u,
     );
     // Global singletons and broadcasts: the PR-link dialog and palette find.
-    expect(chatView).toContain("{splitPane.focused ? <LinkPullRequestDialogHost /> : null}");
+    expect(chatView).toContain(
+      "{splitPane.focused && !embedded ? <LinkPullRequestDialogHost /> : null}",
+    );
     // Upstream replaced the find broadcast with openThreadFind(threadKey) on the
     // palette's active thread, which is the focused pane's; nothing to gate.
     expect(threadFind).not.toContain("subscribeThreadFindOpen");
@@ -65,13 +70,13 @@ describe("fork guard: fork-split-threads", () => {
       "return useSplitPane().focused && !use(BackgroundThreadContext);",
     );
     expect(dictation).toContain("const ownsInput = useOwnsGlobalInput();");
-    expect(dictation).toContain("if (!controller || !ownsInput) return;");
+    expect(dictation).toMatch(/if \(!ownsInput\) return;\s*return registerForkDictationTarget\(/u);
     // A recording left running in a pane that loses focus finishes there.
-    expect(dictation).toMatch(
-      /if \(ownsInput \|\| !controller\) return;\s*settleSession\(controller\);/u,
+    expect(dictation).toContain(
+      "if (!ownsInput) latest.current.dictation.settleWithoutControls();",
     );
     expect(dictation).toMatch(
-      /function settleSession[\s\S]{0,160}if \(phase === "recording"\) void controller\.stop\(\);/u,
+      /settleWithoutControls: \(\) => \{\s*if \(state\.phase === "recording"\) void speech\.stop\(\);/u,
     );
     // Each slot owns its ChatView's composer ref; the palette reads the focused one.
     expect(panes).toMatch(/ComposerHandleContext value=\{props\.composerRef\}/u);

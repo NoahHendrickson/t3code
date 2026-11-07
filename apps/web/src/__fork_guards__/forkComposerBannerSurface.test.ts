@@ -95,8 +95,9 @@ describe("fork guard: fork-composer-banner-surface", () => {
 
   it("targets the attribute, slot and variables upstream's Surface still uses", () => {
     const surface = componentSource("Surface");
-    // Upstream dropped the floating placement; every Surface is attached now.
-    expect(surface).toContain('data-composer-banner-surface="attached"');
+    // Attached unless upstream detaches it (draft-hero notices under the centred
+    // composer); the fork's tuck rules key on "attached".
+    expect(surface).toContain('data-composer-banner-surface={detached ? "detached" : "attached"}');
     expect(surface).toContain("before:border-(--chat-composer-attached-outline)");
     // Tailwind's variable shorthand since upstream sync 2026-10-02; the same
     // two variables the fork rules override.

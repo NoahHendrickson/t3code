@@ -26,122 +26,86 @@
 
 - id: fork-local-dictation
   intent: >
-    macOS desktop users can dictate prompts locally for free through a composer
-    microphone and a tap of the right Command key. A Whisper Large v3
-    Turbo model (547 MiB) and a Silero voice-activity model download once with
-    integrity verification; whisper.cpp runs with Metal, skips non-speech, and
-    returns the transcript as one paragraph.
-    Audio stays on the client device even for remote environments. The composer
-    owns its dictation session through a hook that mirrors mobile's
-    useVoiceInputController (built once, cancelled on owner change, disposed on
-    unmount) and reads its send/editor gates directly; the mic button only
-    renders state. The keyboard lives at the root: a host mounted once above the
-    router installs the right Command and Escape hotkeys and owns a second,
-    fallback session that is disposed with it. A bare right Command tap starts
-    wherever focus sits while the app is active, into the composer on screen
-    when it can take one, and a second tap finishes the live session. When no
-    composer can take it (another page, no thread open, a pending approval or
-    choice-only question, a send in flight) the fallback session records instead and its
-    transcript goes to a toast: one per session, updated in place from
-    preparing through listening, ending as the transcript with a Copy button
-    that stays until dismissed. Closing a live toast by any route (corner X,
-    swipe) cancels through the toast's own close callback; the finished toast
-    is detached so dismissing it cannot touch a session started since. Two
-    controllers never record at once (client-runtime's process-wide session
-    lock), a composer that mounts mid-fallback stays idle and editable because
-    it never started, and Escape cancels a live session only from the composer
-    or an unfocused page so a focused dialog, palette, or field keeps its own
-    Escape. A new recording targets the thread the composer is currently
-    showing, and an owner change cancels an in-flight one rather than
-    re-targeting it. Cancellation stops owned work, stale drafts never receive
-    transcripts, and a session writes to the field it started in: a question
-    that takes a typed answer is dictated into like the prompt (the
-    control-row mic, and a live session holds the Next/Submit slot as it
-    holds send's; not on a compact viewport, where Next/Submit sit in a strip below
-    the editor with no slot for the controls, so the question stays
-    dictation-free there), while a prompt session outlived by an approval or question
-    routes its transcript into the prompt draft itself. When the session's
-    field leaves the editor or the action cluster unmounts, the recording is
-    transcribed on the spot rather than left running with no control to end it.
+    Dictation runs on upstream's environment speech input (Settings → Voice:
+    an environment transcribes with a local model, or a cloud provider), and
+    the fork draws its own controls over that session. The fork's own
+    whisper.cpp engine, helper build and voice IPC are retired (sync
+    2026-11-07); signed macOS builds still claim the microphone entitlement and
+    usage string, which upstream's browser capture needs under the hardened
+    runtime. ChatComposer feeds upstream's useEnvironmentSpeechInput result
+    through forkDictationFromSpeech to ForkDictationControl; upstream's own
+    composer mic and recording pill are not rendered, while its first-run
+    setup dialog (VoiceInputSetup), Send-while-dictating, editor freeze and
+    live preview are kept. Upstream's mod+shift+d shortcut and every other
+    editor's dictation stay upstream's.
+    A bare right Command tap starts dictation into the composer on screen
+    wherever focus sits while the app is active, and a second tap finishes it:
+    the composer registers itself through useForkDictationHotkeyTarget while
+    its pane owns window input (focused in a split, not behind Settings or
+    Usage), reading a layout-phase mirror because ChatComposer is memoized,
+    and a host mounted once above the router installs the listener. Using
+    right Command as a modifier (a chord, click or scroll) or tapping left
+    Command does nothing; Escape is upstream's. A tap with no composer that
+    can take it does nothing (the old toast fallback is gone). The fork's
+    start gates (below) only block starting; upstream's `disabled` also
+    cancels a live recording, so they stay out of it. A recording outlived
+    by an approval or a new question is discarded, as upstream does; one
+    left running when its pane loses input or the plan follow-up's
+    Implement takes the slot settles on the spot. In a split, the pane
+    without window input binds upstream's mod+shift+d only while its form
+    has focus. A live session keeps stop beside the check while a turn runs.
     The mic is a filled-glyph ghost in the composer's control row, after
     attach and before the mode controls (Full access), at the row's 20px
-    ghost size; the send slot always shows send while idle. A send in flight
-    blocks starting a session from the mic or the keyboard. A live session
-    borrows the send button: it becomes the check with a ghost cancel X and
-    the level timeline beside it, and the check spins while transcribing;
-    the control-row mic stays in place, disabled, so the row never shifts. The
-    timeline is a canvas filling the row to the left of the X: a 2px dot per
-    50 ms sample, newest at the right, so silence is dots and speech is bars
-    scrolling left, painted in the foreground colour (pure white in dark). In
-    a started thread an empty prompt keeps the compact one-line row: the
-    cluster (timeline, X, check) fills the editor's place so the composer
-    does not grow. Typed text turns the row into the draft box's grid: the
-    cluster spans the row beneath so the timeline does not squeeze the
-    lines, and the prompt reserves the idle cluster's width on the right
+    ghost size; the send slot always shows send while idle. Dictation is off
+    while a send is in flight, Implement/Refine holds the slot, the draft is
+    locked to a project pick, or a question has no slot for the controls (a
+    choice-only question, or any question on a compact viewport, where
+    Next/Submit sit in a strip below the editor). A typed-answer question is
+    dictated into like the prompt and a live session holds its Next/Submit
+    slot as it holds send's. A live session borrows the send button: it
+    becomes the check with a ghost cancel X and the level timeline beside it,
+    and the check spins while transcribing or cleaning up; the control-row mic
+    stays in place, disabled, so the row never shifts. The timeline is a
+    canvas filling the row to the left of the X: a 2px dot per 50 ms sample,
+    newest at the right, so silence is dots and speech is bars scrolling
+    left, on a -50…-10 dB scale, painted in the foreground colour (pure white
+    in dark). In a started thread an empty prompt keeps the compact one-line
+    row: the cluster (timeline, X, check) fills the editor's place so the
+    composer does not grow. Typed text turns the row into the draft box's
+    grid: the cluster spans the row beneath so the timeline does not squeeze
+    the lines, and the prompt reserves the idle cluster's width on the right
     (send, or stop and send while a turn runs) so the typed text never
-    reflows. Attach stays in the control row, disabled rather than hidden
-    for the session.
-    ChatComposer stamps prompt-empty on the row; the timeline's presence keys
-    the rest.
-    ChatComposer decides when
-    dictation owns the slot and ComposerPrimaryActions hands it over on every
-    path that renders send, including while a turn runs, where it sits to
-    stop's left so stop keeps the right edge and never moves when a session
-    starts (upstream's send while running keeps its place after stop). The
-    check wears the send button's own class list and fork tone attribute,
-    so the send styling applies to it too; the X is a ghost in
-    send's 24px box in pure white, from theme.custom.css.
-    Nothing animates: no tray, no slide or stagger, and no separate blue mic;
-    the timeline appears in place. When the send slot
-    shows something else (an approval, a choice-only question, or the plan follow-up's
-    Implement) a live recording settles on the spot and the keyboard cannot
-    start one. The download percentage and error popover render beside the
-    slot whatever it shows. The microphone tooltip is the word Dictate, on the
-    popup frost every glass tooltip shares (fork-popup-surface), a step
-    larger than the default chip. Recording and transcribing keep their action
-    labels. The packaged helper exits after inference, freeing model
-    memory; the model cache lives under the desktop state dir so --home-dir runs
-    stay isolated.
-    Fork IPC types live in the desktop fork and web custom folders, never in
-    packages/contracts or client-runtime. Browser-only and mobile clients retain
-    their existing behavior.
+    reflows. Attach stays in the control row, disabled rather than hidden for
+    the session. ChatComposer stamps prompt-empty on the row; the timeline's
+    presence keys the rest. ChatComposer decides when dictation owns the slot
+    and ComposerPrimaryActions hands it over on every path that renders send,
+    including while a turn runs, where it sits to stop's left so stop keeps
+    the right edge. The check wears the send button's own class list and fork
+    tone attribute; the X is a ghost in send's 24px box in pure white, from
+    theme.custom.css. Nothing animates. The error popover renders beside the
+    slot whatever it shows, with Open voice settings for a microphone
+    permission error. The microphone tooltip is the word Dictate, on the popup
+    frost every glass tooltip shares (fork-popup-surface), a step larger than
+    the default chip; recording and transcribing keep their action labels.
   files:
-    - apps/desktop/src/fork/voice/LocalSpeechEngine.ts
-    - apps/desktop/src/fork/voice/VoiceInputIpc.ts
-    - apps/desktop/scripts/build-voice-input.mjs
-    - native/voice-input/LICENSE-Whisper.txt
-    - apps/web/src/custom/voice/BrowserVoiceRecorder.ts
     - apps/web/src/custom/voice/ForkDictationControl.tsx
     - apps/web/src/custom/voice/ForkDictationHotkeyHost.tsx
-    - apps/web/src/custom/voice/forkDictationSession.ts
-    - apps/web/src/custom/voice/forkVoiceInputBridge.ts
-    - apps/web/src/custom/voice/useForkDictationController.ts
-    # Declares Promise.withResolvers for the web project: client-runtime's
-    # voice-input controller (upstream #15502) uses it, upstream's web never
-    # reaches that file, and the web lib is ES2023. Only the fork's dictation
-    # imports it from web.
-    - apps/web/src/custom/voice/promiseWithResolvers.d.ts
+    - apps/web/src/custom/voice/forkDictation.ts
     - apps/web/src/custom/ComposerShell.tsx
     - apps/web/src/theme.custom.css
-    - apps/desktop/src/fork/voice/LocalSpeechEngine.test.ts
   shadows: []
   watch:
-    - apps/desktop/src/ipc/DesktopIpcHandlers.ts
-    - apps/desktop/src/preload.ts
-    - apps/desktop/vite.config.ts
     - apps/web/src/components/chat/ChatComposer.tsx
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx
+    - apps/web/src/components/chat/ComposerFooterControls.tsx
     - apps/web/src/routes/__root.tsx
+    - apps/web/src/speech/useEnvironmentSpeechInput.ts
     - scripts/build-desktop-artifact.ts
     - scripts/build-desktop-artifact.test.ts
     - docs/user/composer.md
-    - docs/operations/release.md
-    - apps/web/src/components/chat/ComposerFooterControls.tsx
   verify:
     - apps/web/src/__fork_guards__/forkLocalDictation.test.ts
-    - apps/web/src/__fork_guards__/forkDictationThreadOwnership.test.tsx
-    - apps/desktop/src/fork/voice/LocalSpeechEngine.test.ts
-    - apps/web/src/custom/voice/BrowserVoiceRecorder.test.ts
+    - apps/web/src/__fork_guards__/forkDictationHotkey.test.ts
 
 - id: ci-on-custom
   intent: >
@@ -168,6 +132,8 @@
     - .github/workflows/agent-context-budget.yml
     # Fenced default ref and its usage line.
     - scripts/check-changed.ts
+    # Upstream pins its closest-remote-main default; fenced to origin/custom.
+    - scripts/check-changed.test.ts
     # Fenced paragraph naming the default ref.
     - docs/operations/development.md
   verify:
@@ -438,6 +404,11 @@
     - assets/fork/n3-windows.ico
     - assets/fork/n3-dev-web-apple-touch-180.png
     - assets/fork/n3-web-apple-touch-180.png
+    # Installable web icons (upstream #30420), from the 1024 masters.
+    - assets/fork/n3-web-icon-192x192.png
+    - assets/fork/n3-web-icon-512x512.png
+    - assets/fork/n3-dev-web-icon-192x192.png
+    - assets/fork/n3-dev-web-icon-512x512.png
     - assets/fork/n3-web-favicon-16x16.png
     - assets/fork/n3-web-favicon-32x32.png
     - assets/fork/n3-web-favicon.ico
@@ -469,8 +440,8 @@
     - apps/desktop/src/legacyLocalStorageMerge.ts
     # The v0.0.32 pre-ready refactor: identity and state-dir logic that never
     # reads DesktopEnvironment, so fork values are restated there under
-    # fences. The sync that introduced these files shipped WM class "t3code"
-    # and a ~/.t3 settings read unnoticed — hence the watch.
+    # fences. The sync that introduced these files shipped a ~/.t3 settings
+    # read unnoticed — hence the watch. Upstream #14482 dropped the WM class.
     - apps/desktop/src/app/DesktopStatePaths.ts
     - apps/desktop/src/app/DesktopEarlyElectronStartup.ts
     - apps/desktop/src/app/DesktopEarlyElectronStartup.test.ts
@@ -495,6 +466,8 @@
     - apps/web/src/branding.ts
     - apps/web/src/components/sidebar/SidebarChrome.tsx
     - apps/web/public/apple-touch-icon.png
+    - apps/web/public/icon-192x192.png
+    - apps/web/public/icon-512x512.png
     - apps/web/public/favicon-16x16.png
     - apps/web/public/favicon-32x32.png
     - apps/web/public/favicon.ico
@@ -2447,7 +2420,8 @@
     the panel, so AppSidebarLayout's fixed SidebarControl still exists and still
     floats — but only while the sidebar is shut, which is exactly the case
     COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS already reserves space for in every
-    workspace header.
+    workspace header. In the desktop app at md and up, upstream's back and
+    forward history buttons (#27430) sit right after the toggle.
 
     The sidebar.toggle keybinding stays mounted unconditionally in
     AppSidebarLayout. Hanging it off the button would unmount it with the
@@ -2501,8 +2475,8 @@
     popover over the current thread rather than the /usage route (see
     fork-usage-popover); the V2 sidebar's footer hides its own Usage icon so
     the row is the one door there; the footer takes a hideUsage flag rather than
-    losing the item, so upstream's default footer keeps it. Upstream now
-    defaults the undo notice off; the fork opts in with showUndoNotice. Type is literal 0.875rem so the panel's 13px text-xs remap cannot
+    losing the item, so upstream's default footer keeps it. Upstream always
+    shows the undo notice in the footer's utility menu (#26874). Type is literal 0.875rem so the panel's 13px text-xs remap cannot
     shrink it.
 
     The Threads row (368:21211, drawn there as "Projects") takes the project
@@ -2919,7 +2893,8 @@
     upstream Settings → Scheduled tasks page is left as it is for links that
     still point there. Mobile keeps its own settings editor.
     Trigger choices use the compact rounded track and raised selected tab
-    from Figma node 521:5338, preserving all four trigger behaviors.
+    from Figma node 521:5338, preserving every trigger behavior (Once only where
+    the environment accepts one-time schedules, as upstream offers it).
     Under Glass the cards take the stage-card wash, and a card
     clips its table so a hovered row never paints past its corners.
     That composer wears the chat composer's own context-row, vessel,
@@ -4795,6 +4770,8 @@
   shadows:
     - apps/web/src/components/chat/ComposerPendingUserInputPanel.tsx
   watch:
+    # Upstream's RTL test, fenced to the fork card (no header or collapse, radio rows).
+    - apps/web/src/components/chat/ComposerPendingUserInputPanel.direction.browser.test.tsx
     # data-fork-pending-user-input-action on Previous and Next/Submit; the
     # outline + 24px restyle hangs off those attributes.
     - apps/web/src/components/chat/ComposerPrimaryActions.tsx
@@ -4938,9 +4915,13 @@
     - apps/web/src/components/chat/ProviderModelPicker.tsx
     - apps/web/src/components/chat/ModelPickerContent.tsx
   watch:
+    # Upstream's picker tests, fenced to the fork's menu-item rows and search label;
+    # the docked effort column case is removed (the composer uses ComposerModelPicker).
+    - apps/web/src/components/chat/ProviderModelPicker.browser.test.tsx
+    - apps/web/src/components/chat/ProviderModelPicker.composition.browser.test.tsx
     # Supplies the Menu, item and separator primitives the pages render.
-    # Fenced: MenuPopup passes collisionAvoidance to its Positioner, so the
-    # composer's menu can turn flipping off.
+    # MenuPopup must pass collisionAvoidance to its Positioner so the
+    # composer's menu can turn flipping off (upstream now does; no fence).
     - apps/web/src/components/ui/menu.tsx
     # Reads [data-model-picker-content]; the popup must keep stamping it.
     - apps/web/src/modelPickerVisibility.ts
@@ -5372,6 +5353,8 @@
     - apps/web/src/components/chat/DraftHeroHeadline.tsx
     - apps/web/src/components/chat/draftHeroTransition.ts
   watch:
+    # Upstream's header New thread test, fenced to the fork's New agent door.
+    - apps/web/src/components/Sidebar.browser.test.tsx
     - apps/web/src/components/Sidebar.tsx
     - apps/web/src/routes/_chat.tsx
     # Fenced `leading` slot: the project chip renders first in the strip.
@@ -6005,7 +5988,7 @@
     - apps/web/src/custom/splitThreads/SidebarSplitPairRow.tsx
     - apps/web/src/custom/splitThreads/splitThreads.test.ts
     # Registers only the focused pane's composer.
-    - apps/web/src/custom/voice/useForkDictationController.ts
+    - apps/web/src/custom/voice/forkDictation.ts
     # Digit answers only in the focused pane.
     - apps/web/src/custom/useComposerPendingUserInputCard.ts
     # The drop-target outline.

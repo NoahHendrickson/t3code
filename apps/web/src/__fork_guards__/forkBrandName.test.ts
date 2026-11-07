@@ -58,10 +58,7 @@ describe("fork guard: fork-brand-name", () => {
     });
     expect(transform(source, "/repo/node_modules/pkg/index.js")).toBeNull();
     expect(transform(source, "/repo/apps/web/src/index.css")).toBeNull();
-    for (const path of [
-      "/repo/apps/desktop/src/app/DesktopUserData.ts",
-      "/repo/apps/desktop/src/fork/voice/LocalSpeechEngine.ts",
-    ]) {
+    for (const path of ["/repo/apps/desktop/src/app/DesktopUserData.ts"]) {
       expect(EXCLUDED_MODULES.some((pattern) => pattern.test(path))).toBe(true);
       expect(transform(source, path)).toBeNull();
     }

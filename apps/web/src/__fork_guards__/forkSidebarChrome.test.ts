@@ -179,8 +179,8 @@ describe("fork guard: fork-sidebar-chrome", () => {
     expect(sidebarV2).not.toContain("onUsage=");
     expect(sidebarV2).not.toContain('void router.navigate({ to: "/usage" });');
     // One door, not two: the footer hides its Usage icon since the row above is
-    // the same overlay. Upstream now defaults the undo notice off, so it is opted in.
-    expect(sidebarV2).toContain("<SidebarChromeFooter hideUsage showUndoNotice />");
+    // the same overlay. Upstream always shows the undo notice in its utility menu.
+    expect(sidebarV2).toContain("<SidebarChromeFooter hideUsage />");
     expect(chrome).toMatch(
       /hideUsage \? null : \(\s*<SidebarUtilityItem\s+icon=\{<ChartNoAxesColumnIcon/u,
     );

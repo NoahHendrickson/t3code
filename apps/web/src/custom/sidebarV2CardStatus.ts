@@ -81,6 +81,8 @@ export function resolveSidebarV2CardStatusKind(input: {
   readonly isWoke: boolean;
   readonly hasPendingBackgroundTasks: boolean;
 }): SidebarV2CardStatusKind | null {
+  // Worktree setup (upstream "Setting up") draws as working, as upstream's rollups count it.
+  if (input.status === "preparing") return "working";
   if (input.status !== "ready") return input.status;
   if (input.isWoke) return "woke";
   if (input.isUnread) return "done";

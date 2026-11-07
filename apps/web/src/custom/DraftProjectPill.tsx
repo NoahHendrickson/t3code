@@ -48,6 +48,7 @@ import { useClientSettings } from "~/hooks/useSettings";
 import { cn } from "~/lib/utils";
 import {
   deriveLogicalProjectKeyFromSettings,
+  pickableProjectGroups,
   selectProjectGroupingSettings,
 } from "@t3tools/client-runtime/state/project-grouping";
 import {
@@ -55,7 +56,7 @@ import {
   buildSidebarProjectSnapshots,
   type SidebarProjectPickerEntry,
 } from "~/sidebarProjectGrouping";
-import { useProjects, useThreadShells } from "~/state/entities";
+import { useProjects, useVisibleThreadShells } from "~/state/entities";
 import { useEnvironments, usePrimaryEnvironmentId } from "~/state/environments";
 import {
   ChevronDownIcon,
@@ -158,7 +159,7 @@ export function DraftProjectPill(props: {
     }
     return partition;
   }, [allProjects, scratchWorkspaceRootFor]);
-  const threads = useThreadShells();
+  const threads = useVisibleThreadShells();
   const { environments } = useEnvironments();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const projectGroupingSettings = useClientSettings(selectProjectGroupingSettings);
@@ -202,7 +203,8 @@ export function DraftProjectPill(props: {
   const projectPickerEntries = useMemo(
     () =>
       buildSidebarProjectPickerEntries({
-        groups: projectGroups,
+        // Upstream: an archived project is not a choice for a new thread.
+        groups: pickableProjectGroups(projectGroups),
         preferredProjectRef: props.activeProjectRef,
       }),
     [props.activeProjectRef, projectGroups],

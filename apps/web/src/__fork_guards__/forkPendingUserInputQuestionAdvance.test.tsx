@@ -133,8 +133,9 @@ beforeEach(() => {
     }),
   );
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
-  // The number-key listener narrows its target with these; the document matches none.
-  for (const name of ["HTMLElement", "HTMLInputElement", "HTMLTextAreaElement"]) {
+  // The number-key listener narrows its target with these (Element for upstream's side chat
+  // pane check); the document matches none.
+  for (const name of ["Element", "HTMLElement", "HTMLInputElement", "HTMLTextAreaElement"]) {
     vi.stubGlobal(name, Element);
   }
   toggled = [];

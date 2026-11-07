@@ -19,7 +19,6 @@ const FORK_COMPILER_DEFERRED = new Set([
   "apps/web/src/custom/SidebarV2ProjectGroupHeader.tsx",
   "apps/web/src/custom/designMode/ForkPreviewDesignMode.tsx",
   "apps/web/src/custom/designMode/panel/ForkDesignPanel.tsx",
-  "apps/web/src/custom/voice/useForkDictationController.ts",
 ]);
 /* fork:end fork-lint-cleanliness */
 

@@ -1,12 +1,12 @@
 import { useEffect, useRef, type ReactElement, type ReactNode } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { CheckIcon, XIcon } from "lucide-react";
 import { MicrophoneIcon } from "@phosphor-icons/react";
 import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
-import { readForkVoiceInputBridge } from "./forkVoiceInputBridge";
-import type { ForkDictation } from "./useForkDictationController";
+import type { ForkDictation } from "./forkDictation";
 
 // Figma 472:33881 draws 2px blue dots on a 4px pitch, 3px in from either
 // edge, bars up to 16px tall in a 24px row. By request the bars are 1px wide
@@ -46,14 +46,17 @@ function levelToUnit(rms: number): number {
  * every 50 ms would never settle. The bitmap follows the element's box, so a
  * window resize repaints it at the new width.
  */
-function VoiceLevelTimeline(props: { subscribe: ForkDictation["subscribeLevel"] }) {
-  const { subscribe } = props;
+function VoiceLevelTimeline(props: { level: number }) {
+  const { level } = props;
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const historyRef = useRef<number[]>([]);
+  const paintRef = useRef<() => void>(() => {});
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- owns the canvas bitmap and repaints it when the element resizes
   useEffect(() => {
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
     if (!canvas || !context) return;
-    const history: number[] = [];
+    const history = historyRef.current;
     const paint = () => {
       const width = canvas.clientWidth;
       const height = canvas.clientHeight;
@@ -66,8 +69,6 @@ function VoiceLevelTimeline(props: { subscribe: ForkDictation["subscribeLevel"] 
       }
       context.setTransform(scale, 0, 0, scale, 0, 0);
       context.clearRect(0, 0, width, height);
-      // Read per paint so an appearance switch mid-session recolours the
-      // next sample rather than the next session.
       context.fillStyle = getComputedStyle(canvas).color;
       const slots = Math.floor((width - 2 * BAR_INSET + BAR_GAP) / BAR_PITCH);
       for (let slot = 0; slot < slots; slot++) {
@@ -80,19 +81,23 @@ function VoiceLevelTimeline(props: { subscribe: ForkDictation["subscribeLevel"] 
         context.fillRect(x, (height - barHeight) / 2, BAR_WIDTH, barHeight);
       }
     };
+    paintRef.current = paint;
     const observer = new ResizeObserver(paint);
     observer.observe(canvas);
     paint();
-    const unsubscribe = subscribe((level) => {
-      history.push(levelToUnit(level));
-      if (history.length > HISTORY_LIMIT) history.shift();
-      paint();
-    });
     return () => {
-      unsubscribe();
+      paintRef.current = () => {};
       observer.disconnect();
     };
-  }, [subscribe]);
+  }, []);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- appends each meter sample to the canvas history and repaints the bitmap
+  useEffect(() => {
+    const history = historyRef.current;
+    // Upstream meters min(1, 4 × RMS); undo the gain so the bars keep their dB scale.
+    history.push(levelToUnit(level / 4));
+    if (history.length > HISTORY_LIMIT) history.shift();
+    paintRef.current();
+  }, [level]);
   return (
     <canvas
       ref={canvasRef}
@@ -172,7 +177,8 @@ export function ForkDictationPrimaryButton(props: {
   const { dictation, disabled, className } = props;
   const { phase } = dictation.state;
   const recording = phase === "recording";
-  const transcribing = phase === "transcribing";
+  // Cleanup by a text model (upstream's post-processing) spins like transcription.
+  const transcribing = phase === "transcribing" || phase === "post-processing";
   const busy = dictation.blocksSubmission;
   const label = transcribing
     ? "Transcribing (Escape to cancel)"
@@ -181,7 +187,7 @@ export function ForkDictationPrimaryButton(props: {
       : "Dictate (Right Command)";
   return (
     <>
-      {busy ? <VoiceLevelTimeline subscribe={dictation.subscribeLevel} /> : null}
+      {busy ? <VoiceLevelTimeline level={dictation.level} /> : null}
       {busy ? (
         <Button
           type="button"
@@ -231,51 +237,37 @@ export function ForkDictationPrimaryButton(props: {
 }
 
 /**
- * The session's words: the one-time model download percentage and the error
- * popover with its actions. Rendered beside the primary actions whatever the
- * send slot is showing, since a failed transcription must be reported even
- * when typed text has put the send button back.
+ * A failed session's message and its actions, beside the primary actions
+ * whatever the send slot shows: typed text may have put send back already.
+ * Model setup and downloads are upstream's first-run dialog.
  */
 export function ForkDictationNotices(props: { dictation: ForkDictation }) {
   const { dictation } = props;
-  if (!dictation.isAvailable) return null;
-  // Preparing is normally a blink (permission + model check) and transcribing
-  // is the spinner on the check; only the one-time model download says anything.
-  const status =
-    dictation.state.phase === "preparing" && dictation.downloadPercent !== null
-      ? `Downloading model ${dictation.downloadPercent}%`
-      : null;
-  if (!status && !dictation.error) return null;
+  const navigate = useNavigate();
+  if (!dictation.isAvailable || !dictation.error) return null;
   return (
     <div className="relative flex shrink-0 items-center">
-      {status ? (
-        <span role="status" className="max-w-36 text-xs text-muted-foreground">
-          {status}
-        </span>
-      ) : null}
-      {dictation.error ? (
-        <div
-          role="alert"
-          className="absolute bottom-full right-0 z-20 mb-2 w-64 rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-md"
-        >
-          {dictation.error}
-          <div className="mt-2 flex justify-end gap-1">
-            {dictation.errorAction === "settings" ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void readForkVoiceInputBridge()?.openMicrophoneSettings()}
-              >
-                Open microphone settings
-              </Button>
-            ) : null}
-            <Button type="button" variant="ghost" size="sm" onClick={dictation.cancel}>
-              Dismiss
+      <div
+        role="alert"
+        className="absolute bottom-full right-0 z-20 mb-2 w-64 rounded-lg border bg-popover p-3 text-xs text-popover-foreground shadow-md"
+      >
+        {dictation.error}
+        <div className="mt-2 flex justify-end gap-1">
+          {dictation.errorAction === "settings" ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void navigate({ to: "/settings/voice" })}
+            >
+              Open voice settings
             </Button>
-          </div>
+          ) : null}
+          <Button type="button" variant="ghost" size="sm" onClick={dictation.cancel}>
+            Dismiss
+          </Button>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }

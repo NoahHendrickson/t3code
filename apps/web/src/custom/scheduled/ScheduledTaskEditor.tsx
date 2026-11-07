@@ -47,6 +47,7 @@ import { webhookAddress } from "@t3tools/client-runtime/webhook-address";
 
 import {
   scheduledTaskDefaultModel,
+  toDateTimeLocalValue,
   type ScheduleMode,
   type WorkspaceMode,
 } from "~/components/settings/scheduledTasksSettings.logic";
@@ -70,7 +71,7 @@ import { stackedThreadToast, toastManager } from "~/components/ui/toast";
 import { Toggle, ToggleGroup } from "~/components/ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { WorktreeBaseBranchPicker } from "~/components/WorktreeBaseBranchPicker";
-import { usePrimaryCloudLinkState } from "~/cloud/primaryCloudLinkState";
+import { usePrimaryCloudLinkState } from "~/cloud/cloudLinkState";
 import { requestConfirmDialog } from "~/confirmDialog";
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { useEnvironmentSettings } from "~/hooks/useSettings";
@@ -81,7 +82,7 @@ import {
   sortProviderInstanceEntries,
 } from "~/providerInstances";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
-import { useEnvironmentHttpBaseUrl } from "~/state/environments";
+import { useEnvironment, useEnvironmentHttpBaseUrl } from "~/state/environments";
 import { EMPTY_SERVER_PROVIDERS, serverEnvironment } from "~/state/server";
 import { useAtomCommand } from "~/state/use-atom-command";
 import { draftTriggerLabel } from "./scheduledPage.logic";
@@ -321,9 +322,15 @@ function TriggerPill(props: ScheduledTaskEditorProps) {
 
 function TriggerFields(props: ScheduledTaskEditorProps) {
   const { draft, setDraft } = props;
+  const environment = useEnvironment(props.environmentId);
+  // Older servers reject one-time schedules, so Once is offered only where it can save.
+  const offersOnce =
+    environment?.serverConfig?.environment.capabilities.oneTimeSchedules === true ||
+    draft.scheduleMode === "once";
   return (
     <div className="flex flex-col gap-4">
       <ScheduledTriggerTabs
+        offersOnce={offersOnce}
         value={[draft.githubPrOpened ? "github_pr" : draft.scheduleMode]}
         onValueChange={(values) => {
           if (values[0] === "github_pr") {
@@ -336,10 +343,20 @@ function TriggerFields(props: ScheduledTaskEditorProps) {
             return;
           }
           const mode = values[0] as ScheduleMode | undefined;
-          if (mode === "fixed" || mode === "interval" || mode === "webhook")
+          if (mode === "fixed" || mode === "once" || mode === "interval" || mode === "webhook")
             setDraft((current) => ({
               ...current,
               scheduleMode: mode,
+              // Upstream suggests the next whole hour, keeping the instant for repeated hours.
+              ...(mode === "once" && !current.runAt
+                ? (() => {
+                    const suggested = new Date(Math.ceil(Date.now() / 3_600_000) * 3_600_000);
+                    return {
+                      runAt: toDateTimeLocalValue(suggested),
+                      savedRunAt: suggested.toISOString(),
+                    };
+                  })()
+                : {}),
               githubPrOpened: false,
               prompt:
                 mode === "webhook" && !current.prompt.trim()
@@ -421,6 +438,18 @@ function TriggerFields(props: ScheduledTaskEditorProps) {
             }
           </p>
         </>
+      ) : draft.scheduleMode === "once" ? (
+        <div className="flex items-center gap-2">
+          <Label htmlFor="scheduled-task-run-at">Run on</Label>
+          <Input
+            type="datetime-local"
+            id="scheduled-task-run-at"
+            nativeInput
+            className="w-56"
+            value={draft.runAt}
+            onChange={(event) => setDraft((current) => ({ ...current, runAt: event.target.value }))}
+          />
+        </div>
       ) : draft.scheduleMode === "fixed" ? (
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -783,8 +812,8 @@ function WebhookDeliveryMode(props: { readonly environmentId: EnvironmentId }) {
       {cloudLink.data.holdWebhooksWhileOffline
         ? "Held for up to 24 hours while this environment is offline. "
         : "Forwarded live. Requests fail while this environment is offline. "}
-      <Link to="/settings/connections" className="underline underline-offset-2">
-        Change in Connections
+      <Link to="/settings/access" className="underline underline-offset-2">
+        Change in Sharing & access
       </Link>
     </p>
   );

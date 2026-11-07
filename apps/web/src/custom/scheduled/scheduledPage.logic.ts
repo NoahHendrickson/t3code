@@ -206,9 +206,15 @@ export const SCHEDULED_STARTERS: ReadonlyArray<ScheduledStarter> = [
 /** JS day-of-week (0 = Sunday). */
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
+const ONCE_FORMATTER = new Intl.DateTimeFormat(undefined, {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
 /** Mirrors upstream's settings label so the two pages never disagree on a trigger. */
 export function scheduleLabel(schedule: ScheduledTaskSchedule): string {
   if (schedule.type === "webhook") return schedule.github ? "GitHub PR opened" : "On webhook";
+  if (schedule.type === "once") return `Once, ${ONCE_FORMATTER.format(new Date(schedule.runAt))}`;
   if (schedule.type === "interval") {
     const minutes = schedule.everyMs / 60_000;
     return Number.isInteger(minutes)
@@ -235,13 +241,20 @@ function fixedTimeLabel(timeOfDay: string, weekdays: ReadonlyArray<number>): str
  */
 export function draftTriggerLabel(draft: {
   readonly githubPrOpened?: boolean | undefined;
-  readonly scheduleMode: "interval" | "fixed" | "webhook";
+  readonly scheduleMode: "interval" | "fixed" | "webhook" | "once";
+  readonly runAt?: string;
   readonly intervalMinutes: string;
   readonly timeOfDay: string;
   readonly weekdays: ReadonlySet<number>;
 }): string {
   if (draft.githubPrOpened) return "GitHub PR opened";
   if (draft.scheduleMode === "webhook") return "On webhook";
+  if (draft.scheduleMode === "once") {
+    const runAt = draft.runAt ? new Date(draft.runAt) : null;
+    return runAt && !Number.isNaN(runAt.getTime())
+      ? `Once, ${ONCE_FORMATTER.format(runAt)}`
+      : "Once";
+  }
   if (draft.scheduleMode === "interval") {
     const minutes = Number(draft.intervalMinutes);
     return draft.intervalMinutes.trim() && Number.isFinite(minutes) && minutes > 0

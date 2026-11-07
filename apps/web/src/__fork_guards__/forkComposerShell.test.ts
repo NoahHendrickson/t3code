@@ -261,7 +261,10 @@ describe("fork guard: fork-composer-shell", () => {
     // A deleted worktree answers "not a repo" for its own cwd rather than
     // failing, so gating on that alone unmounted the strip and stranded the
     // thread there. A worktree path in play must keep the strip rendered.
-    expect(chatView).toMatch(/showComposerContextStrip\s*=\s*shouldShowComposerContextStrip/u);
+    // Upstream gates it off inside a side chat pane (`embedded`).
+    expect(chatView).toMatch(
+      /showComposerContextStrip\s*=\s*!embedded &&\s*shouldShowComposerContextStrip/u,
+    );
     expect(chatView).toMatch(/hasActiveProject:\s*activeProject !== null/u);
     expect(chatView).toMatch(/isGitRepo:\s*isGitRepo \|\| activeThreadWorktreePath !== null/u);
   });

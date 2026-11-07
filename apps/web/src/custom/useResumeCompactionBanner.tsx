@@ -2,7 +2,7 @@ import { ChevronsDownUpIcon } from "lucide-react";
 import { useSyncExternalStore, type RefObject } from "react";
 
 import type { ComposerBannerStackItem } from "~/components/chat/ComposerBannerStack";
-import { shouldOfferResumeCompaction } from "~/components/chat/ContextWindowMeter.logic";
+import { shouldOfferResumeCompaction } from "@t3tools/client-runtime/state/context-window";
 import { Button } from "~/components/ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { formatContextWindowTokens } from "~/lib/contextWindow";

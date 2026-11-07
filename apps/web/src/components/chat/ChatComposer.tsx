@@ -1,10 +1,12 @@
+import { VoiceInputSetup } from "./VoiceInputSetup";
 import { useComposerTypingGuard } from "./useComposerTypingGuard";
 import { insertAttachmentReferencesForDraft } from "./composerAttachmentReferences";
 import { DESKTOP_PASTE_AS_TEXT_EVENT } from "../../lib/desktopPasteAsText";
+import { BackgroundThreadContext } from "./backgroundThread";
 import {
   resolveCompatibleRuntimeMode,
   runtimeModeConfig,
-  runtimeModeOptions as runtimeModes,
+  resolveRuntimeModeOptions,
 } from "./runtimeModeConfig";
 import { isLocalEnvironmentDisabled } from "../../localEnvironment";
 import { usePrimaryEnvironmentId } from "../../state/environments";
@@ -37,6 +39,8 @@ import type {
 import {
   EnvironmentRequestInvalidError,
   AuthOrchestrationOperateScope,
+  clampManagedRuntimeMode,
+  managedRuntimeModeDenial,
   ProviderDriverKind,
   ProviderInstanceId,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
@@ -52,6 +56,7 @@ import { createModelSelection, normalizeModelSlug } from "@t3tools/shared/model"
 import { USAGE_LIMITS_COMMAND } from "@t3tools/shared/usageLimits";
 import {
   memo,
+  use,
   useEffect,
   useEffectEvent,
   useId,
@@ -70,6 +75,7 @@ import {
   type ComposerSubmissionIntent,
   collapseExpandedComposerCursor,
   composerRequiresModifier,
+  composerSubmissionIntentForKey,
   composerStateAtPromptEnd,
   detectComposerTrigger,
   expandCollapsedComposerCursor,
@@ -84,7 +90,6 @@ import {
 import {
   deriveComposerSendState,
   getAntigravitySendBlockReason,
-  readFileAsDataUrl,
   resolveComposerInteractionMode,
   threadShellHasStarted,
 } from "../ChatView.logic";
@@ -92,16 +97,17 @@ import {
   dataTransferHasComposerMention,
   makeComposerMentionDragHandlers,
 } from "./composerMentionDrag";
+import { serializeComposerImages } from "./composerImagePersistence";
 import {
   isInsideCollapsedComposerControls,
   isInsideRestingComposerControlScope,
+  markOpenToEffort,
   markOpenToPermissions,
 } from "./composerEventScope";
 import {
   type ComposerFileAttachment,
   type ComposerImageAttachment,
   type DraftId,
-  type PersistedComposerImageAttachment,
   composerFileNeedsReattach,
   composerDraftHasUserContent,
   composerTargetKey,
@@ -139,6 +145,9 @@ import {
   useAttachmentUploadStore,
 } from "../../lib/attachmentUploadQueue";
 import { attachmentUploadBlockReason } from "../../lib/attachmentUploadState";
+import { useDictationShortcut } from "../../speech/useDictationShortcut";
+import { useDictationSubmissionShortcut } from "../../speech/useDictationSubmissionShortcut";
+import { useEnvironmentSpeechInput } from "../../speech/useEnvironmentSpeechInput";
 import type { AssistantCitationSourceAnchor } from "~/lib/assistantTextSelection";
 import { shortcutLabelForCommand } from "../../keybindings";
 import {
@@ -147,7 +156,11 @@ import {
 } from "../../lib/terminalContext";
 /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
 import { ForkDictationGhostMic, ForkDictationNotices } from "~/custom/voice/ForkDictationControl";
-import { useForkDictationController } from "~/custom/voice/useForkDictationController";
+import {
+  forkDictationFromSpeech,
+  useForkDictationHotkeyTarget,
+} from "~/custom/voice/forkDictation";
+import { useOwnsGlobalInput } from "~/custom/splitThreads/splitPaneContext";
 /* fork:end fork-local-dictation */
 /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode */
 import { ForkComposerDesignChanges } from "~/custom/designMode/ForkComposerDesignChanges";
@@ -247,13 +260,10 @@ import { ComposerPendingUserInputPanel } from "./ComposerPendingUserInputPanel";
 import { ComposerPlanFollowUpBanner } from "./ComposerPlanFollowUpBanner";
 import { resolveComposerMenuActiveItemId } from "./composerMenuHighlight";
 import { buildPullRequestReferenceContext } from "../pullRequest/pullRequestDetail.logic";
-import {
-  getComposerPromptInjectionState,
-  getComposerReasoningStep,
-  /* fork:begin fork-model-picker — see .fork/customizations.yaml#fork-model-picker */
-  renderProviderTraitsPicker,
-  /* fork:end fork-model-picker */
-} from "./composerProviderState";
+import { getComposerPromptInjectionState, getComposerReasoningStep } from "./composerProviderState";
+/* fork:begin fork-model-picker — see .fork/customizations.yaml#fork-model-picker */
+import type { ComposerModelTraitsInput } from "~/custom/composerModelTraits";
+/* fork:end fork-model-picker */
 import { readPromptUltrathink } from "./TraitsPicker";
 import {
   providerSupportsManualCompaction,
@@ -279,31 +289,27 @@ import { observeResize } from "~/lib/observeResize";
 const isEnvironmentRequestInvalidError = Schema.is(EnvironmentRequestInvalidError);
 import { toastManager } from "../ui/toast";
 /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
-import { CircleAlertIcon, PlayIcon, PlusIcon } from "lucide-react";
+import { BuildingIcon, CircleAlertIcon, PlayIcon, PlusIcon } from "lucide-react";
 /* fork:end fork-composer-shell */
+import { useManagedPolicy } from "../../state/managedPolicy";
 import { proposedPlanTitle } from "@t3tools/shared/proposedPlanText";
 import { hasProviderSetup } from "./ProviderStatusBanner";
 import { type AppModelOption, getAppModelOptionsForInstance } from "../../modelSelection";
 import type { UnifiedSettings } from "@t3tools/contracts/settings";
-import {
-  isVideoAttachment,
-  type ChatMessage,
-  type SessionPhase,
-  type Thread,
-  type ThreadShell,
-} from "../../types";
+import { isVideoAttachment, type SessionPhase, type Thread, type ThreadShell } from "../../types";
 import { type ComposerPromptHistoryPosition } from "./composerPromptHistory";
-import type { PendingUserInputDraftAnswer } from "../../pendingUserInput";
+import type { PendingUserInputDraftAnswer } from "@t3tools/client-runtime/state/pending-user-input";
 import type {
   LatestProposedPlanState,
   PendingApproval,
   PendingUserInput,
+  TimelineEntry,
 } from "../../session-logic";
 import {
   resolveComposerDispatchMode,
   type ComposerDispatchMode,
 } from "@t3tools/client-runtime/state/composer-dispatch";
-import type { ContextWindowSnapshot } from "../../lib/contextWindow";
+import { deriveLatestContextWindowSnapshot } from "@t3tools/client-runtime/state/context-window";
 import {
   resolveProviderSkillsForCwd,
   resolveProviderSlashCommandsForCwd,
@@ -312,7 +318,7 @@ import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useSoftwareKeyboardOpen } from "../../hooks/useSoftwareKeyboardOpen";
 import { useStableCallback } from "../../hooks/useStableCallback";
 import { usePanelAnimationSettings } from "../../panelAnimations";
-import { readEnvironmentScope } from "../../state/session";
+import { readEnvironmentScope, readPreparedConnection } from "../../state/session";
 import type { ReviewCommentContext } from "../../reviewCommentContext";
 import { useComposerRestingTransition } from "./useComposerRestingTransition";
 import { ComposerCommandMenuLayer } from "./ComposerCommandMenuLayer";
@@ -337,8 +343,6 @@ function consumePasteAsTextShortcut(deadline: { current: number }): boolean {
   deadline.current = 0;
   return armed;
 }
-
-const runtimeModeOptions = runtimeModes.map((mode) => ({ mode, ...runtimeModeConfig[mode] }));
 
 export interface ChatComposerHandle {
   focusAtEnd: () => void;
@@ -419,7 +423,7 @@ export interface ChatComposerProps {
   activeThreadId: ThreadId | null;
   activeThread: Thread | undefined;
   activeThreadShell: ThreadShell | null;
-  promptHistoryMessages: ReadonlyArray<ChatMessage>;
+  promptHistoryEntries: ReadonlyArray<TimelineEntry>;
   forceExpandedOnMobile: boolean;
   projectSelectionRequired: boolean;
 
@@ -439,6 +443,10 @@ export interface ChatComposerProps {
   keepFullHistory: boolean;
   onToggleKeepFullHistory: () => void;
   onUsageLimitsCommand?: (() => void) | undefined;
+  sideChatAvailable?: boolean;
+  sideChatDisabledReason?: string | null;
+  /** Arms a fresh session for the next message; absent where `/clear` is unavailable. */
+  onFreshSession?: (() => void) | undefined;
   environmentUnavailable: {
     readonly label: string;
     readonly connection: EnvironmentConnectionPresentation;
@@ -484,8 +492,11 @@ export interface ChatComposerProps {
   activeThreadModelSelection: ModelSelection | null | undefined;
   reportedModelSelection?: ModelSelection | null;
   activeProjectId: ProjectId | null;
+  projectName?: string | undefined;
 
-  activeContextWindow: ContextWindowSnapshot | null;
+  contextWindowEntries: Parameters<typeof deriveLatestContextWindowSnapshot>[0];
+  contextWindowLiveUsage: Parameters<typeof deriveLatestContextWindowSnapshot>[1];
+  contextWindowProviderThread: Parameters<typeof deriveLatestContextWindowSnapshot>[2];
   compactThreadUnavailable: boolean;
   compactDisabled: boolean;
   compactDisabledReason: string | null;
@@ -580,7 +591,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     onMultipleModelSelectionsChange: setMultipleModelSelections,
     activeThreadId,
     activeThread,
-    promptHistoryMessages,
+    promptHistoryEntries,
     forceExpandedOnMobile,
     projectSelectionRequired,
     phase,
@@ -613,7 +624,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     activeThreadModelSelection,
     reportedModelSelection,
     activeProjectId,
-    activeContextWindow,
+    projectName,
+    contextWindowEntries,
+    contextWindowLiveUsage,
+    contextWindowProviderThread,
     compactThreadUnavailable,
     compactDisabled,
     compactDisabledReason,
@@ -658,6 +672,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     editingQueuedAttachments,
     onRemoveEditingQueuedAttachment,
   } = props;
+  const activeContextWindow = deriveLatestContextWindowSnapshot(
+    contextWindowEntries,
+    contextWindowLiveUsage,
+    contextWindowProviderThread,
+  );
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const composerDraftTargetKey = composerTargetKey(composerDraftTarget);
   const {
@@ -780,6 +799,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const composerContextActions = {
     environmentId,
     cwd: gitCwd ?? undefined,
+    projectId: activeProjectId ?? undefined,
     expandImage: (imageId: string) => {
       const preview = buildExpandedImagePreview(composerImages, imageId);
       if (preview) onExpandImage(preview);
@@ -979,19 +999,27 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       runtimeMode,
       selectedProviderEntry?.snapshot.supportedRuntimeModes,
     );
-  const compatibleRuntimeModeOptions = runtimeModeOptions.filter((option) =>
-    compatibleRuntimeModes.includes(option.mode),
+  // Modes above an administrator's ceiling stay listed, disabled with the reason.
+  const managedPolicy = useManagedPolicy(environmentId);
+  const compatibleRuntimeModeOptions = resolveRuntimeModeOptions(
+    compatibleRuntimeModes,
+    managedPolicy,
   );
+  // A thread or draft already above the ceiling would be refused; offer the broadest mode left.
+  const runtimeModeCeilingDenial = managedRuntimeModeDenial(managedPolicy, compatibleRuntimeMode);
+  const runtimeModeCeilingFallback =
+    runtimeModeCeilingDenial === undefined
+      ? undefined
+      : clampManagedRuntimeMode(managedPolicy, compatibleRuntimeMode, compatibleRuntimeModes);
 
   const providerSendBlockReason = getAntigravitySendBlockReason(
     selectedProviderEntry?.snapshot,
     selectedModel,
   );
   /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-  // No mic or hotkey while Implement/Refine takes the send slot or a send is in flight.
-  // Dictation follows the editor's gate, not send's: an unassigned draft is dictatable. A typed-
-  // answer question dictates into the editor, except on a compact viewport (max-sm), where its
-  // Next/Submit strip has no slot for session controls. Own query: isMobileViewport is below.
+  // A typed-answer question dictates into the editor, except on a compact viewport (max-sm),
+  // where its Next/Submit strip has no slot for the check and X. Own query: isMobileViewport is
+  // declared below.
   const dictationCompactViewport = useMediaQuery("max-sm");
   const dictationAnswersQuestion =
     !dictationCompactViewport &&
@@ -999,61 +1027,14 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     activePendingProgress?.activeQuestion != null &&
     activePendingProgress.activeQuestion.allowCustomAnswer !== false &&
     !activePendingIsResponding;
-  // The field the editor shows. A session pins the one it started in
-  // (dictationFieldRef) and settles when that field leaves the editor.
-  const dictationEditorField =
-    activePendingApproval !== null
-      ? "approval"
-      : activePendingProgress?.activeQuestion
-        ? `answer:${pendingUserInputs[0]?.requestId}:${activePendingProgress.activeQuestion.id}`
-        : "prompt";
-  const dictationFieldRef = useRef(dictationEditorField);
-  const dictationDisabled =
-    isSendBusy ||
-    activePendingApproval !== null ||
-    (pendingUserInputs.length > 0 && !dictationAnswersQuestion) ||
-    (pendingUserInputs.length === 0 && showPlanFollowUpPrompt) ||
-    promptLockedForProject;
-  const dictation = useForkDictationController({
-    ownerKey: composerTargetKey(composerDraftTarget),
-    disabled: dictationDisabled,
-    // Invoked on start/stop, after the refs and callbacks declared below exist.
-    getComposerElement: () => composerFormRef.current,
-    focusEditor: focusComposer,
-    // A prompt session outlived by an approval or question reads and lands in the prompt draft
-    // directly (the store's `prompt`, not `promptRef`/`composerCursor`, which mirror the answer
-    // field while a question is up). An answer session whose question has gone reads nothing.
-    readDraft: (starting) => {
-      if (starting) dictationFieldRef.current = dictationEditorField;
-      if (dictationFieldRef.current === dictationEditorField) return readComposerSnapshot();
-      if (dictationFieldRef.current !== "prompt") return null;
-      return { value: prompt, expandedCursor: prompt.length };
-    },
-    commitDraft: (text, cursor) => {
-      const collapsedCursor = collapseExpandedComposerCursor(text, cursor);
-      if (dictationFieldRef.current !== dictationEditorField) {
-        setPrompt(text);
-        return;
-      }
-      onPromptChange(text, collapsedCursor, cursor, false, readComposerSnapshot().contextIds);
-      window.requestAnimationFrame(() => {
-        // focusAt re-commits the editor's snapshot; skip it if typing already
-        // moved on, or the caret would jump back behind the new text.
-        if (promptRef.current !== text) return;
-        composerEditorRef.current?.focusAt(collapsedCursor);
-      });
-    },
-  });
   /* fork:end fork-local-dictation */
   const sendDisabledReason =
-    /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-    (dictation.blocksSubmission ? "Finish or cancel dictation before sending." : null) ??
-    /* fork:end fork-local-dictation */
     externalSendDisabledReason ??
     (multipleModelSelections?.length === 0 ? "Select at least one model." : null) ??
     (activePendingProgress
       ? attachmentBlockReason
       : (attachmentBlockReason ??
+        runtimeModeCeilingDenial ??
         (multipleModelSelections === null ? providerSendBlockReason : null)));
   const isSendDisabled = sendDisabledReason !== null;
   const selectedProviderStatus = selectedProviderEntry?.snapshot ?? null;
@@ -1064,11 +1045,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const selectedProviderSlashCommands = selectedProviderStatus
     ? resolveProviderSlashCommandsForCwd(selectedProviderStatus, gitCwd)
     : NO_PROVIDER_SLASH_COMMANDS;
-  const refreshWorkspaceSnapshotOnTyping = useProviderWorkspaceSnapshotRefresh({
-    environmentId,
-    gitCwd,
-    instanceId: selectedProviderEntry?.instanceId,
-  });
+  const { refresh: refreshWorkspaceSnapshotOnTyping, scanning: workspaceSkillsScanning } =
+    useProviderWorkspaceSnapshotRefresh({
+      environmentId,
+      gitCwd,
+      instanceId: selectedProviderEntry?.instanceId,
+    });
 
   const selectedPromptEffort = composerProviderState.promptEffort;
   const selectedModelOptionsForDispatch = composerProviderState.modelOptionsForDispatch;
@@ -1186,14 +1168,19 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     isRevertingCheckpointRef.current = isRevertingCheckpoint;
   });
 
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- subscribes to window keydown, blur and the desktop paste-as-text event to arm plain-text paste
+  const backgroundThread = use(BackgroundThreadContext);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- subscribes to keydown, window blur and the desktop paste-as-text event to arm plain-text paste
   useEffect(() => {
+    // A background composer listens on its own form, so it never hears the main composer's keys.
+    const target: EventTarget | null = backgroundThread ? composerFormRef.current : window;
+    if (target === null) return;
     const armPasteAsTextShortcut = () => {
       // Electron's menu action can precede paste; browsers deliver keydown first.
       pasteAsTextShortcutUntilRef.current = Date.now() + 1_000;
     };
-    const onKeyDown = (event: KeyboardEvent) => {
+    const onKeyDown = (event: Event) => {
       if (
+        event instanceof KeyboardEvent &&
         event.target instanceof Node &&
         composerFormRef.current?.contains(event.target) &&
         isPasteAsTextShortcut(event, isMacPlatform(navigator.platform))
@@ -1211,22 +1198,24 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         activeElement.closest(
           'input, textarea, select, button, a[href], summary, [contenteditable="true"], [contenteditable="plaintext-only"], [role="textbox"], [role="button"], [role="menuitem"], [role="option"]',
         ) !== null;
+      // A background composer takes no paste-to-focus, so it arms only for its own focus.
       if (
         (activeElement instanceof Node && composerFormRef.current?.contains(activeElement)) ||
-        !blocksPasteToFocus
+        (!blocksPasteToFocus && !backgroundThread)
       ) {
         armPasteAsTextShortcut();
       }
     };
-    window.addEventListener(DESKTOP_PASTE_AS_TEXT_EVENT, onDesktopPasteAsText);
-    window.addEventListener("keydown", onKeyDown, true);
-    window.addEventListener("blur", onBlur);
+    target.addEventListener(DESKTOP_PASTE_AS_TEXT_EVENT, onDesktopPasteAsText);
+    target.addEventListener("keydown", onKeyDown, true);
+    // An arm lasts a second, so a background composer can skip the window blur reset.
+    if (!backgroundThread) window.addEventListener("blur", onBlur);
     return () => {
-      window.removeEventListener(DESKTOP_PASTE_AS_TEXT_EVENT, onDesktopPasteAsText);
-      window.removeEventListener("keydown", onKeyDown, true);
+      target.removeEventListener(DESKTOP_PASTE_AS_TEXT_EVENT, onDesktopPasteAsText);
+      target.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("blur", onBlur);
     };
-  }, []);
+  }, [backgroundThread]);
 
   /* fork:begin fork-design-mode — see .fork/customizations.yaml#fork-design-mode
      Pending design-change attachments count toward sendability (like annotations), so a
@@ -1236,6 +1225,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const composerSendState = deriveComposerSendState({
     prompt,
     imageCount: composerImages.length + composerFiles.length,
+    existingAttachmentCount: editingQueuedAttachments?.length ?? 0,
     terminalContexts: composerTerminalContexts,
     elementContextCount:
       composerPreviewAnnotations.length +
@@ -1273,11 +1263,15 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     pullRequestRepository,
     threadPullRequests,
     planModeUiEnabled,
+    sideChatAvailable: props.sideChatAvailable === true,
+    sideChatDisabledReason: props.sideChatDisabledReason ?? null,
+    freshSessionAvailable: props.onFreshSession !== undefined,
     compactSlashCommandAvailable,
     selectedProvider,
     selectedProviderSkills,
     selectedProviderSlashCommands,
     showSkillsInSlashMenu: settings.showSkillsInSlashMenu,
+    workspaceSkillsScanning,
     questionAttachmentTarget,
   });
 
@@ -1388,27 +1382,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       : "Send message";
   const showMobilePendingAnswerActions =
     isMobileViewport && !isComposerCollapsedMobile && pendingPrimaryAction !== null;
-  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-  // Mirrors where ComposerPrimaryActions renders the send slot: when the check and X unmount
-  // (approval, choice-only question, or plan follow-up takes it), a live recording is
-  // transcribed rather than left running with nothing on screen to end it. A typed-answer
-  // question hands the slot to a live session, as send does.
-  const dictationControlsVisible =
-    activePendingApproval === null &&
-    (pendingPrimaryAction === null || dictationAnswersQuestion) &&
-    !(pendingUserInputs.length === 0 && showPlanFollowUpPrompt);
-  // The mic lives in the control row; a live session takes the send slot
-  // (the check and X) for its whole length. A question keeps Next/Submit in
-  // the slot until a session starts.
-  const dictationOwnsPrimaryAction = dictation.isAvailable && dictation.blocksSubmission;
-  const { settleWithoutControls: settleDictationWithoutControls } = dictation;
-  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- settles a live dictation whose send-slot controls just unmounted or whose field left the editor
-  useEffect(() => {
-    if (!dictationControlsVisible || dictationFieldRef.current !== dictationEditorField) {
-      settleDictationWithoutControls();
-    }
-  }, [dictationControlsVisible, dictationEditorField, settleDictationWithoutControls]);
-  /* fork:end fork-local-dictation */
 
   const setPrompt = (nextPrompt: string) => {
     setComposerDraftPrompt(composerDraftTarget, nextPrompt);
@@ -1530,6 +1503,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     composerContextRecords,
     composerImages,
     composerFilesRef,
+    promptRef,
     pendingThreadImportsRef,
     addComposerFilesToDraft,
   });
@@ -1712,31 +1686,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         getComposerDraft(attachmentDraftTarget)?.persistedAttachments ?? [];
       try {
         const currentPersistedAttachments = getPersistedAttachmentsForThread();
-        const existingPersistedById = new Map(
-          currentPersistedAttachments.map((attachment) => [attachment.id, attachment]),
+        const serialized = await serializeComposerImages(
+          composerImages,
+          currentPersistedAttachments,
         );
-        const stagedAttachmentById = new Map<string, PersistedComposerImageAttachment>();
-        await Promise.all(
-          composerImages.map(async (image) => {
-            try {
-              const dataUrl = await readFileAsDataUrl(image.file);
-              stagedAttachmentById.set(image.id, {
-                id: image.id,
-                name: image.name,
-                mimeType: image.mimeType,
-                sizeBytes: image.sizeBytes,
-                dataUrl,
-                ...(image.source ? { source: image.source } : {}),
-              });
-            } catch {
-              const existingPersisted = existingPersistedById.get(image.id);
-              if (existingPersisted) {
-                stagedAttachmentById.set(image.id, existingPersisted);
-              }
-            }
-          }),
-        );
-        const serialized = Array.from(stagedAttachmentById.values());
         if (cancelled) return;
         syncComposerDraftPersistedAttachments(attachmentDraftTarget, serialized);
       } catch {
@@ -2010,6 +1963,97 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   };
   const readComposerSnapshotStable = useStableCallback(readComposerSnapshot);
 
+  const dictationDisabled =
+    !canOperateThread ||
+    environmentUnavailable !== null ||
+    /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft
+       An unassigned New agent draft keeps its prompt editable; promptLockedForProject below
+       blocks only the drafts whose editor is locked. */
+    /* fork:end fork-new-agent-draft */
+    isComposerApprovalState ||
+    activePendingIsResponding ||
+    activePendingProgress?.activeQuestion?.allowCustomAnswer === false;
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+     Gates starting only: upstream's `disabled` also cancels a live recording, so these stay
+     out of it. No mic or hotkey while a send is in flight, Implement/Refine holds the send
+     slot, the draft is locked to a project pick, or a question has no slot for the check and X. */
+  const forkDictationStartBlocked =
+    dictationDisabled ||
+    isSendBusy ||
+    (pendingUserInputs.length === 0 && showPlanFollowUpPrompt) ||
+    promptLockedForProject ||
+    (pendingUserInputs.length > 0 && !dictationAnswersQuestion);
+  /* fork:end fork-local-dictation */
+  const speechInput = useEnvironmentSpeechInput({
+    environmentId,
+    projectId: activeProjectId,
+    projectName,
+    ownerKey: questionAttachmentTarget ?? composerDraftTargetKey,
+    draftText: prompt,
+    disabled: dictationDisabled,
+    readDraft: () => {
+      const snapshot = readComposerSnapshot();
+      return {
+        text: snapshot.value,
+        selection: composerEditorRef.current?.readSelectionRange() ?? {
+          start: snapshot.expandedCursor,
+          end: snapshot.expandedCursor,
+        },
+      };
+    },
+    commitDraft: (text, selection) => {
+      const snapshot = readComposerSnapshot();
+      const applied = applyPromptReplacement(0, snapshot.value.length, text, {
+        expectedText: snapshot.value,
+        focusEditorAfterReplace: false,
+      });
+      if (!applied) return;
+      const cursor = collapseExpandedComposerCursor(text, selection.start, isLiteralPendingAnswer);
+      setComposerCursor(cursor);
+      window.requestAnimationFrame(() => composerEditorRef.current?.focusAt(cursor));
+    },
+  });
+  const { blocksSubmission: voiceInputActive, submitAfterDictation } = speechInput;
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+     The fork's mic, send-slot check and X and right Command tap draw upstream's session. */
+  const dictation = forkDictationFromSpeech(speechInput);
+  useForkDictationHotkeyTarget(dictation, forkDictationStartBlocked);
+  // In a split, the pane without window input binds mod+shift+d only while its form has focus.
+  const ownsGlobalInput = useOwnsGlobalInput();
+  // Mirrors where ComposerPrimaryActions renders the send slot: when the check and X unmount
+  // (approval, choice-only question, or plan follow-up takes it), a live recording is
+  // transcribed rather than left running with nothing on screen to end it.
+  const dictationControlsVisible =
+    activePendingApproval === null &&
+    (pendingUserInputs.length === 0 || dictationAnswersQuestion) &&
+    !(pendingUserInputs.length === 0 && showPlanFollowUpPrompt);
+  // The mic lives in the control row; a live session takes the send slot for its whole length.
+  const dictationOwnsPrimaryAction = dictation.isAvailable && dictation.blocksSubmission;
+  const { settleWithoutControls: settleDictationWithoutControls } = dictation;
+  const dictationLive = dictation.blocksSubmission;
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- settles a live dictation whose send-slot controls just unmounted
+  useEffect(() => {
+    if (dictationLive && !dictationControlsVisible) settleDictationWithoutControls();
+  }, [dictationControlsVisible, dictationLive, settleDictationWithoutControls]);
+  /* fork:end fork-local-dictation */
+  const voiceSendDisabledReason =
+    sendDisabledReason ?? (speechInput.preparing ? "Preparing voice input" : null);
+  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+     Installs mod+shift+d; the label went to upstream's mic, which the fork does not render. */
+  useDictationShortcut({
+    /* fork:end fork-local-dictation */
+    keybindings,
+    speech: speechInput,
+    /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
+    disabled: forkDictationStartBlocked,
+    /* fork:end fork-local-dictation */
+    terminalOpen,
+    modelPickerOpen: isComposerModelPickerOpen,
+    /* fork:begin fork-split-threads — see .fork/customizations.yaml#fork-split-threads */
+    ...(backgroundThread || !ownsGlobalInput ? { targetRef: composerFormRef } : {}),
+    /* fork:end fork-split-threads */
+  });
+
   const resolveActiveComposerTrigger = (): {
     snapshot: { value: string; cursor: number; expandedCursor: number };
     trigger: ComposerTrigger | null;
@@ -2058,6 +2102,27 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           setComposerHighlightedItemId(null);
           setIsComposerModelPickerOpen(true);
         }
+        return;
+      }
+      if (item.command === "clear") {
+        const applied = applyPromptReplacement(trigger.rangeStart, trigger.rangeEnd, "", {
+          expectedText: snapshot.value.slice(trigger.rangeStart, trigger.rangeEnd),
+        });
+        if (applied) {
+          setComposerHighlightedItemId(null);
+          props.onFreshSession?.();
+        }
+        return;
+      }
+      if (item.command === "side" || item.command === "btw") {
+        if (props.sideChatDisabledReason) return;
+        const applied = applyPromptReplacement(
+          trigger.rangeStart,
+          trigger.rangeEnd,
+          `/${item.command} `,
+          { expectedText: snapshot.value.slice(trigger.rangeStart, trigger.rangeEnd) },
+        );
+        if (applied) setComposerHighlightedItemId(null);
         return;
       }
       if (!planModeUiEnabled) return;
@@ -2232,11 +2297,19 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     return showPlanFollowUpPrompt || composerSendState.hasSendableContent;
   };
 
+  const submitComposerRef = useRef<
+    (dispatchMode?: ComposerDispatchMode, submissionIntent?: ComposerSubmissionIntent) => void
+  >(() => {});
   const submitComposer = (
     event?: { preventDefault: () => void },
     dispatchMode?: ComposerDispatchMode,
     submissionIntent?: ComposerSubmissionIntent,
   ) => {
+    if (voiceInputActive) {
+      event?.preventDefault();
+      submitAfterDictation(() => submitComposerRef.current(dispatchMode, submissionIntent));
+      return;
+    }
     if (
       noProviderAvailable ||
       isSendDisabled ||
@@ -2294,6 +2367,38 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     }
   };
   const submitComposerStable = useStableCallback(submitComposer);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- publishes the committed submission handler to the asynchronous dictation completion
+  useLayoutEffect(() => {
+    submitComposerRef.current = (mode, intent) => submitComposerStable(undefined, mode, intent);
+  }, [submitComposerStable]);
+  useDictationSubmissionShortcut({
+    enabled: voiceInputActive && !speechInput.preparing,
+    formRef: composerFormRef,
+    onKeyDown: (event) => {
+      const intent = composerSubmissionIntentForKey({
+        event,
+        keybindings,
+        isSoftwareKeyboardOpen,
+        isDraftThread: routeKind === "draft",
+        isRunning: phase === "running",
+        sendShortcut: settings.sendShortcut,
+        prompt: promptRef.current,
+      });
+      if (!intent) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      submitComposer(
+        undefined,
+        resolveComposerDispatchMode({
+          running: phase === "running",
+          alternateModifier: intent === "alternate",
+          canSteer: !isCompacting,
+          activeTurnDefault: followUpBehavior,
+        }),
+        intent,
+      );
+    },
+  });
   const handleSubmitMessage = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     submitComposer(
@@ -2379,7 +2484,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       planModeUiEnabled,
       isLiteralPendingAnswer,
       pendingUserInputs,
-      promptHistoryMessages,
+      promptHistoryEntries,
       promptHistoryPositionRef,
       composerDraftTarget,
       promptRef,
@@ -2475,12 +2580,37 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   );
   // An open question owns the space above the composer. Only a machine problem,
   // which is why an answer could not go through, stays beside it.
+  const bannerItems: readonly ComposerBannerStackItem[] =
+    runtimeModeCeilingDenial === undefined || activePendingProgress
+      ? props.bannerItems
+      : [
+          ...props.bannerItems,
+          {
+            id: "managed-runtime-mode",
+            variant: "warning",
+            icon: <BuildingIcon />,
+            title: runtimeModeCeilingDenial,
+            ...(runtimeModeCeilingFallback === undefined
+              ? {}
+              : {
+                  actions: (
+                    <Button
+                      size="xs"
+                      variant="ghost"
+                      onClick={() => handleRuntimeModeChange(runtimeModeCeilingFallback)}
+                    >
+                      Switch to {runtimeModeConfig[runtimeModeCeilingFallback].label}
+                    </Button>
+                  ),
+                }),
+          },
+        ];
   const shelfItems = hasBlockingComposerTopDrawer
-    ? props.bannerItems.filter(
+    ? bannerItems.filter(
         (item) =>
           item.group === "environment" && (item.variant === "error" || item.variant === "warning"),
       )
-    : props.bannerItems;
+    : bannerItems;
   /* fork:begin fork-composer-approval-notice — see .fork/customizations.yaml#fork-composer-approval-notice
      A pending approval is a notice card above the composer, not a timeline row. */
   const forkShelfItems = activePendingApproval
@@ -2618,11 +2748,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       localEnvironmentDisabled: isLocalEnvironmentDisabled(),
       environmentId,
       primaryEnvironmentId,
+      connection: readPreparedConnection(environmentId),
+      isDesktopRenderer: window.desktopBridge !== undefined,
     });
     if (target === "remote") {
       toastManager.add({
         type: "error",
-        title: "Folders can only be referenced in the local desktop environment",
+        title: "Folders can only be referenced on a server running on this computer",
       });
       return;
     }
@@ -3006,15 +3138,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           direction,
         });
         if (!change) return;
-        if (change.modelOptions) {
-          useComposerDraftStore
-            .getState()
-            .setProviderModelOptions(composerDraftTarget, selectedProvider, change.modelOptions, {
-              instanceId: selectedInstanceId,
-              model: selectedModel,
-              persistSticky: true,
-            });
-        }
+        useComposerDraftStore
+          .getState()
+          .setProviderModelOptions(composerDraftTarget, selectedProvider, change.modelOptions, {
+            instanceId: selectedInstanceId,
+            model: selectedModel,
+            persistSticky: true,
+          });
         if (change.prompt !== promptRef.current) {
           applyPromptReplacementStable(0, promptRef.current.length, change.prompt, {
             expandedCursorAfterReplace: change.cursor,
@@ -3046,6 +3176,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         if (!trigger) return;
         trigger.focus({ preventScroll: true });
         if (command === "composer.mode") markOpenToPermissions(trigger);
+        if (command === "composer.effort") markOpenToEffort(trigger);
         trigger.click();
       },
       compactContext: compactThreadContextStable,
@@ -3276,12 +3407,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     promptUltrathink,
     onPromptEdit: editPromptFromTraitsStable,
     planModeEnabled: settings.planModeEnabled,
-    isComposerOwned: true,
-    effortDisplay: settings.effortDisplay,
     /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
     triggerLabelSeparator: " ",
     /* fork:end fork-composer-shell */
-  } satisfies Parameters<typeof renderProviderTraitsPicker>[0];
+  } satisfies ComposerModelTraitsInput;
   /* fork:end fork-model-picker */
 
   /* fork:begin fork-composer-shell — see .fork/customizations.yaml#fork-composer-shell */
@@ -3515,14 +3644,18 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           },
         })}
         showPlanFollowUpPrompt={pendingUserInputs.length === 0 && showPlanFollowUpPrompt}
-        promptHasText={prompt.trim().length > 0}
+        promptHasText={prompt.trim().length > 0 || voiceInputActive}
+        voiceInputActive={voiceInputActive}
         isSendBusy={isSendBusy}
-        sendDisabledReason={sendDisabledReason}
+        sendDisabledReason={voiceSendDisabledReason}
         isEnvironmentUnavailable={
           environmentUnavailable !== null || noProviderAvailable || projectSelectionRequired
         }
         isPreparingWorktree={isPreparingWorktree}
+        /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation
+           A live session takes the slot itself; counting it as sendable would drop stop. */
         hasSendableContent={composerSendState.hasSendableContent}
+        /* fork:end fork-local-dictation */
         canResume={showResumeAction}
         preserveComposerFocusOnPointerDown={isMobileViewport}
         isEditingQueuedMessage={isEditingQueuedMessage}
@@ -3530,7 +3663,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         onResume={onResume}
         /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
         forkDictation={
-          dictationOwnsPrimaryAction ? { dictation, disabled: dictationDisabled } : null
+          dictationOwnsPrimaryAction ? { dictation, disabled: forkDictationStartBlocked } : null
         }
         /* fork:end fork-local-dictation */
         onPreviousPendingQuestion={onPreviousActivePendingUserInputQuestion}
@@ -3542,6 +3675,21 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         compactDisabled={compactDisabled || noProviderAvailable || isSendBusy}
         compactDisabledReason={resolvedCompactDisabledReason}
         {...(compactCommandAvailable ? { onCompactContext: compactThreadContextStable } : {})}
+      />
+      <VoiceInputSetup
+        environmentId={speechInput.transcriptionEnvironmentId}
+        open={speechInput.setup.open}
+        step={speechInput.setup.step}
+        status={speechInput.status}
+        model={speechInput.setup.model}
+        language={speechInput.setup.language}
+        downloading={speechInput.setup.downloading}
+        error={speechInput.setup.error}
+        onOpenChange={speechInput.setup.setOpen}
+        onRetryCatalog={speechInput.setup.retryCatalog}
+        onDownload={() => void speechInput.setup.download()}
+        onCancelDownload={() => void speechInput.setup.cancelDownload()}
+        onStartRecording={() => void speechInput.setup.startRecording()}
       />
     </div>
   );
@@ -3615,7 +3763,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 dictate into. */}
             <ForkDictationGhostMic
               dictation={dictation}
-              disabled={dictationDisabled || dictation.blocksSubmission}
+              disabled={forkDictationStartBlocked || dictation.blocksSubmission}
             />
             {/* fork:end fork-local-dictation */}
             {composerModeControls}
@@ -3751,6 +3899,16 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 </div>
               ) : null}
 
+              {speechInput.preview ? (
+                <div
+                  aria-label="Live transcription"
+                  className="mx-3 mb-3 max-h-32 overflow-y-auto rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm leading-relaxed break-words whitespace-pre-wrap sm:mx-4"
+                >
+                  <span>{speechInput.preview.committed}</span>
+                  <span className="text-muted-foreground">{speechInput.preview.tentative}</span>
+                </div>
+              ) : null}
+
               <div
                 ref={(node) => {
                   setComposerMenuAnchor(node);
@@ -3767,7 +3925,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                    button: the 44px base surface. Upstream pads px-4 pb-2 pt-3.5 sm:pt-4. */
                   "relative px-2 py-2.5",
                   /* fork:end fork-composer-shell */
-                  isComposerCollapsedMobile && "hidden",
+                  isComposerCollapsedMobile && speechInput.state.phase === "idle" && "hidden",
                 )}
               >
                 {isStashMenuOpen && !composerMenuOpen && (
@@ -3794,7 +3952,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                     ? isComposerMenuLoading
                       ? composerTriggerKind === "pull-request"
                         ? "Finding pull request..."
-                        : "Searching workspace files..."
+                        : composerTriggerKind === "skill" || composerTriggerKind === "slash-command"
+                          ? "Searching workspace skills..."
+                          : "Searching workspace files..."
                       : composerMenuEmptyState
                     : ""}
                 </div>
@@ -3907,14 +4067,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                           /* fork:end fork-composer-shell */
                         }
                         disabled={
-                          /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-                          dictation.freezesEditor ||
-                          /* fork:end fork-local-dictation */
                           /* fork:begin fork-new-agent-draft — see .fork/customizations.yaml#fork-new-agent-draft */
                           promptLockedForProject ||
                           /* fork:end fork-new-agent-draft */
                           isChoiceOnlyPendingQuestion ||
-                          activePendingIsResponding
+                          activePendingIsResponding ||
+                          speechInput.freezesEditor
                         }
                       />
                     </ComposerContextActionsContext>
@@ -3932,7 +4090,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                           showPlanFollowUpPrompt={false}
                           promptHasText={false}
                           isSendBusy={isSendBusy}
-                          sendDisabledReason={sendDisabledReason}
+                          sendDisabledReason={voiceSendDisabledReason}
                           isEnvironmentUnavailable={
                             environmentUnavailable !== null ||
                             noProviderAvailable ||

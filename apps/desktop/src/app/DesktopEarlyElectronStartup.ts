@@ -28,7 +28,6 @@ type EarlyLinuxElectronOptionsInput = EarlyDesktopSettingsInput;
 
 export interface EarlyLinuxElectronOptions {
   readonly isDevelopment: boolean;
-  readonly linuxWmClass: string;
   readonly linuxDesktopEntryName: string;
   readonly passwordStore: LinuxPasswordStoreSwitch | null;
 }
@@ -176,14 +175,7 @@ export function resolveEarlyLinuxElectronOptions(
   const preference = resolveEarlyLinuxPasswordStorePreference(input);
   const isDevelopment = isDevelopmentEnvironment(input.env);
   return {
-    /* fork:begin fork-app-identity — see .fork/customizations.yaml#fork-app-identity */
-    // A packaged fork build must window-match its own desktop entry
-    // (StartupWMClass, written by build-desktop-artifact.ts). Upstream's
-    // pre-ready refactor rederives the class here without reading
-    // DesktopEnvironment.linuxWmClass, so the fork value has to be restated.
     isDevelopment,
-    linuxWmClass: isDevelopment ? "t3code-dev" : "t3code-fork",
-    /* fork:end fork-app-identity */
     linuxDesktopEntryName: resolveLinuxDesktopEntryName(isDevelopment),
     passwordStore: resolveLinuxPasswordStoreSwitch({
       preference,

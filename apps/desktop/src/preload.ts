@@ -1,5 +1,6 @@
 import type {
   DesktopBridge,
+  DesktopPreviewAnnotationVoiceEvent,
   DesktopPreviewOpenLinkEvent,
   DesktopPreviewPointerEvent,
   DesktopPreviewRecordingInputEvent,
@@ -11,18 +12,6 @@ import { contextBridge, ipcRenderer, webFrame, webUtils } from "electron";
 
 import * as IpcChannels from "./ipc/channels.ts";
 import { mergeLegacyLocalStorage } from "./legacyLocalStorageMerge.ts";
-/* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-import type { VoiceInputIpcResult } from "./fork/voice/VoiceInputIpc.ts";
-
-async function invokeVoiceInput<T>(
-  channel: string,
-  request: { requestId?: string; wav?: Uint8Array },
-): Promise<T> {
-  const result: VoiceInputIpcResult<T> = await ipcRenderer.invoke(channel, request);
-  if (!result.ok) throw new Error(result.error);
-  return result.value;
-}
-/* fork:end fork-local-dictation */
 
 const SNAP_SHOT_EVENT_TYPES = new Set([
   "requested",
@@ -103,6 +92,11 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     ipcRenderer.on(IpcChannels.SET_NOTIFICATION_BADGE_CHANNEL, handler);
     return () => ipcRenderer.removeListener(IpcChannels.SET_NOTIFICATION_BADGE_CHANNEL, handler);
   },
+  onTrackpadScrollBegin: (listener) => {
+    const handler = () => listener();
+    ipcRenderer.on(IpcChannels.TRACKPAD_SCROLL_BEGIN_CHANNEL, handler);
+    return () => ipcRenderer.removeListener(IpcChannels.TRACKPAD_SCROLL_BEGIN_CHANNEL, handler);
+  },
   onTrackpadScrollEnd: (listener) => {
     const handler = () => listener();
     ipcRenderer.on(IpcChannels.TRACKPAD_SCROLL_END_CHANNEL, handler);
@@ -112,6 +106,12 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   getSystemLocale: () => {
     const result = ipcRenderer.sendSync(IpcChannels.GET_SYSTEM_LOCALE_CHANNEL);
     return typeof result === "string" ? result : null;
+  },
+  getPreferredSystemLanguages: () => {
+    const result: unknown = ipcRenderer.sendSync(
+      IpcChannels.GET_PREFERRED_SYSTEM_LANGUAGES_CHANNEL,
+    );
+    return Array.isArray(result) ? result.filter((tag) => typeof tag === "string") : [];
   },
   getLocalEnvironmentBootstraps: () => {
     const result = ipcRenderer.sendSync(IpcChannels.GET_LOCAL_ENVIRONMENT_BOOTSTRAPS_CHANNEL);
@@ -126,6 +126,7 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     ipcRenderer.sendSync(IpcChannels.GET_LOCAL_ENVIRONMENT_ENABLED_CHANNEL) !== false,
   setLocalEnvironmentEnabled: (enabled) =>
     ipcRenderer.invoke(IpcChannels.SET_LOCAL_ENVIRONMENT_ENABLED_CHANNEL, enabled),
+  getHostEnvironmentId: () => ipcRenderer.invoke(IpcChannels.GET_HOST_ENVIRONMENT_ID_CHANNEL),
   getClientSettings: () => ipcRenderer.invoke(IpcChannels.GET_CLIENT_SETTINGS_CHANNEL),
   setClientSettings: (settings) =>
     ipcRenderer.invoke(IpcChannels.SET_CLIENT_SETTINGS_CHANNEL, settings),
@@ -209,6 +210,7 @@ contextBridge.exposeInMainWorld("desktopBridge", {
   cancelProviderAuthCallback: (url: string) =>
     ipcRenderer.invoke(IpcChannels.CANCEL_PROVIDER_AUTH_CALLBACK_CHANNEL, url),
   openExternal: (url: string) => ipcRenderer.invoke(IpcChannels.OPEN_EXTERNAL_CHANNEL, url),
+  readMedia: (url: string) => ipcRenderer.invoke(IpcChannels.READ_MEDIA_CHANNEL, url),
   checkSystemPermission: (pane: string) =>
     ipcRenderer.invoke(IpcChannels.CHECK_SYSTEM_PERMISSION_CHANNEL, pane),
   openSystemSettings: (pane: string) =>
@@ -273,11 +275,12 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     };
   },
   getUpdateState: () => ipcRenderer.invoke(IpcChannels.UPDATE_GET_STATE_CHANNEL),
-  setUpdateChannel: (channel) =>
-    ipcRenderer.invoke(IpcChannels.UPDATE_SET_CHANNEL_CHANNEL, channel),
+  setUpdateChannel: (channel, minimumVersion) =>
+    ipcRenderer.invoke(IpcChannels.UPDATE_SET_CHANNEL_CHANNEL, { channel, minimumVersion }),
   checkForUpdate: () => ipcRenderer.invoke(IpcChannels.UPDATE_CHECK_CHANNEL),
   downloadUpdate: () => ipcRenderer.invoke(IpcChannels.UPDATE_DOWNLOAD_CHANNEL),
-  installUpdate: () => ipcRenderer.invoke(IpcChannels.UPDATE_INSTALL_CHANNEL),
+  installUpdate: (expectedVersion) =>
+    ipcRenderer.invoke(IpcChannels.UPDATE_INSTALL_CHANNEL, expectedVersion),
   cliCommand: {
     getState: () => ipcRenderer.invoke(IpcChannels.CLI_COMMAND_GET_STATE_CHANNEL),
     install: () => ipcRenderer.invoke(IpcChannels.CLI_COMMAND_INSTALL_CHANNEL),
@@ -353,6 +356,8 @@ contextBridge.exposeInMainWorld("desktopBridge", {
       ipcRenderer.invoke(IpcChannels.PREVIEW_SET_COLOR_SCHEME_CHANNEL, { tabId, colorScheme }),
     setAudioMuted: (tabId, audioMuted) =>
       ipcRenderer.invoke(IpcChannels.PREVIEW_SET_AUDIO_MUTED_CHANNEL, { tabId, audioMuted }),
+    setShown: (tabId, shown) =>
+      ipcRenderer.invoke(IpcChannels.PREVIEW_SET_SHOWN_CHANNEL, { tabId, shown }),
     openDevTools: (tabId) =>
       ipcRenderer.invoke(IpcChannels.PREVIEW_OPEN_DEVTOOLS_CHANNEL, { tabId }),
     listBrowserImportSources: () => ipcRenderer.invoke(IpcChannels.PREVIEW_IMPORT_SOURCES_CHANNEL),
@@ -371,7 +376,20 @@ contextBridge.exposeInMainWorld("desktopBridge", {
         tabId,
         enabled,
       }),
-    pickElement: (tabId) => ipcRenderer.invoke(IpcChannels.PREVIEW_PICK_ELEMENT_CHANNEL, { tabId }),
+    annotationVoice: {
+      onEvent: (listener) => {
+        const onEvent = (_event: Electron.IpcRendererEvent, tabId: string, value: unknown) => {
+          if (typeof tabId !== "string" || typeof value !== "object" || value === null) return;
+          listener(tabId, value as DesktopPreviewAnnotationVoiceEvent);
+        };
+        ipcRenderer.on(IpcChannels.PREVIEW_ANNOTATION_VOICE_EVENT_CHANNEL, onEvent);
+        return () => ipcRenderer.off(IpcChannels.PREVIEW_ANNOTATION_VOICE_EVENT_CHANNEL, onEvent);
+      },
+      update: (state) =>
+        ipcRenderer.invoke(IpcChannels.PREVIEW_ANNOTATION_VOICE_STATE_CHANNEL, state),
+    },
+    pickElement: (tabId, voice) =>
+      ipcRenderer.invoke(IpcChannels.PREVIEW_PICK_ELEMENT_CHANNEL, { tabId, voice }),
     cancelPickElement: (tabId) =>
       ipcRenderer.invoke(IpcChannels.PREVIEW_CANCEL_PICK_ELEMENT_CHANNEL, { tabId }),
     captureScreenshot: (tabId) =>
@@ -449,34 +467,6 @@ contextBridge.exposeInMainWorld("desktopBridge", {
  * addition does not need a preload `alwaysBundle` entry.
  */
 contextBridge.exposeInMainWorld("forkDesktopBridge", {
-  /* fork:begin fork-local-dictation — see .fork/customizations.yaml#fork-local-dictation */
-  // Mirrored by `ForkVoiceInputBridge` in apps/web/src/custom/voice/forkVoiceInputBridge.ts.
-  // Absent off macOS: the whisper helper only builds and ships there, and the
-  // renderer treats a missing bridge as "no dictation" rather than a failure.
-  voiceInput:
-    clientPlatform !== "darwin"
-      ? undefined
-      : {
-          prepare: (requestId: string): Promise<void> =>
-            invokeVoiceInput<void>("fork:voice-prepare", { requestId }),
-          transcribe: (requestId: string, wav: Uint8Array): Promise<string> =>
-            invokeVoiceInput<string>("fork:voice-transcribe", { requestId, wav }),
-          cancel: (requestId: string): Promise<void> =>
-            invokeVoiceInput<void>("fork:voice-cancel", { requestId }),
-          openMicrophoneSettings: (): Promise<void> =>
-            invokeVoiceInput<void>("fork:voice-open-microphone-settings", {}),
-          onDownloadProgress: (
-            listener: (event: { requestId: string; percent: number }) => void,
-          ): (() => void) => {
-            const receive = (
-              _event: Electron.IpcRendererEvent,
-              data: { requestId: string; percent: number },
-            ) => listener(data);
-            ipcRenderer.on("fork:voice-download", receive);
-            return () => ipcRenderer.removeListener("fork:voice-download", receive);
-          },
-        },
-  /* fork:end fork-local-dictation */
   setSidebarVibrancy: (enabled: boolean): Promise<boolean> =>
     ipcRenderer.invoke("fork:set-sidebar-vibrancy", { enabled }),
   /* fork:begin fork-glass-floor-color — see .fork/customizations.yaml#fork-glass-floor-color */

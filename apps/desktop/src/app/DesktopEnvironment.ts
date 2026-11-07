@@ -76,7 +76,6 @@ export class DesktopEnvironment extends Context.Service<
     readonly displayName: string;
     readonly appUserModelId: string;
     readonly linuxDesktopEntryName: string;
-    readonly linuxWmClass: string;
     readonly linuxApplicationsDir: string;
     readonly desktopLauncherPath: Option.Option<string>;
     readonly appImagePath: Option.Option<string>;
@@ -286,7 +285,6 @@ const make = Effect.fn("desktop.environment.make")(function* (
       isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code.fork",
     ),
     linuxDesktopEntryName: resolveLinuxDesktopEntryName(isDevelopment),
-    linuxWmClass: isDevelopment ? "t3code-dev" : "t3code-fork",
     // fork:end fork-app-identity
     linuxApplicationsDir,
     desktopLauncherPath: config.desktopLauncherPath,

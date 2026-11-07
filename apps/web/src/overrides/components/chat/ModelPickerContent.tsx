@@ -553,7 +553,15 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- subscribes a capture-phase window keydown listener for the picker's lifetime
   useEffect(() => {
     const onWindowKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.defaultPrevented || event.repeat || isCommandPaletteOpen()) return;
+      // Upstream: keys that compose IME text never trigger picker shortcuts.
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.isComposing ||
+        event.keyCode === 229 ||
+        isCommandPaletteOpen()
+      )
+        return;
       const command = resolveShortcutCommand(event, keybindings, {
         platform: navigator.platform,
         context: modelJumpShortcutContext,
@@ -607,6 +615,11 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
   }, [redirectTypingToSearch]);
 
   const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing || event.keyCode === 229) {
+      (event as typeof event & { preventBaseUIHandler?: () => void }).preventBaseUIHandler?.();
+      event.stopPropagation();
+      return;
+    }
     if (event.key === "Escape" && searchQuery) {
       event.preventDefault();
       event.stopPropagation();

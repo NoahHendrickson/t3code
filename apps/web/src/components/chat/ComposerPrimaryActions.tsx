@@ -46,6 +46,8 @@ interface ComposerPrimaryActionsProps {
   alternateShortcutLabel?: string | null;
   showPlanFollowUpPrompt: boolean;
   promptHasText: boolean;
+  /** Dictation is running; Send finishes it and submits once the transcript lands. */
+  voiceInputActive?: boolean;
   isSendBusy: boolean;
   sendDisabledReason: string | null;
   isEnvironmentUnavailable: boolean;
@@ -105,6 +107,7 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
   alternateShortcutLabel = null,
   showPlanFollowUpPrompt,
   promptHasText,
+  voiceInputActive = false,
   isSendBusy,
   sendDisabledReason,
   isEnvironmentUnavailable,
@@ -216,8 +219,12 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
           disabled={
             !canOperateThread ||
             isEnvironmentUnavailable ||
+            isSendDisabled ||
             pendingAction.isResponding ||
-            (pendingAction.isLastQuestion ? !pendingAction.isComplete : !pendingAction.canAdvance)
+            (!voiceInputActive &&
+              (pendingAction.isLastQuestion
+                ? !pendingAction.isComplete
+                : !pendingAction.canAdvance))
           }
         >
           {formatPendingPrimaryActionLabel({
@@ -440,7 +447,9 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
           }
         >
           <Minimize2Icon aria-hidden="true" />
-          {keepFullHistory ? "Keep" : "Compact"}
+          <span className="@max-[480px]/composer-surface:hidden">
+            {keepFullHistory ? "Keep" : "Compact"}
+          </span>
           <span className="text-muted-foreground">{compactTokens}</span>
         </TooltipTrigger>
         <TooltipPopup>

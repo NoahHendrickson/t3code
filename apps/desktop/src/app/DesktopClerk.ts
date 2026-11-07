@@ -24,6 +24,7 @@ import * as ElectronProtocol from "../electron/ElectronProtocol.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopUserData from "./DesktopUserData.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
+import { openClerkTokenStorage } from "./ClerkTokenStore.ts";
 import * as DesktopWebLinks from "./DesktopWebLinks.ts";
 
 declare const __T3CODE_BUILD_CLERK_PUBLISHABLE_KEY__: string | undefined;
@@ -87,7 +88,11 @@ export const desktopClerkFrontendApiHostname = resolveDesktopClerkFrontendApiHos
     : __T3CODE_BUILD_CLERK_PUBLISHABLE_KEY__,
 );
 
-export function createDesktopClerkBridge(stateDir: string, isDevelopment: boolean) {
+export function createDesktopClerkBridge(
+  stateDir: string,
+  isDevelopment: boolean,
+  userDataPath: string,
+) {
   // fork:begin fork-clerk-launch-resilience — main.ts is the sole scheme registrar
   // main.ts already registered the renderer schemes' privileges at module load, so the bridge's
   // own registerSchemesAsPrivileged call adds nothing and throws once Electron is "ready".
@@ -100,7 +105,11 @@ export function createDesktopClerkBridge(stateDir: string, isDevelopment: boolea
   try {
     // fork:end fork-clerk-launch-resilience
     return createClerkBridge({
-      storage: storage({ path: stateDir }),
+      storage: openClerkTokenStorage(
+        stateDir,
+        (directory) => storage({ path: directory }),
+        userDataPath,
+      ),
       manageSingleInstanceLock: false,
       passkeys: true,
       renderer: {
@@ -162,7 +171,8 @@ export const make = Effect.gen(function* () {
     // fork:end fork-clerk-launch-resilience
     yield* Effect.acquireRelease(
       Effect.try({
-        try: () => createDesktopClerkBridge(environment.stateDir, environment.isDevelopment),
+        try: () =>
+          createDesktopClerkBridge(environment.stateDir, environment.isDevelopment, userDataPath),
         catch: (cause) =>
           new DesktopClerkBridgeInitializationError({
             stateDir: environment.stateDir,

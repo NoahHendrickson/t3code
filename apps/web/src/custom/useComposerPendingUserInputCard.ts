@@ -8,10 +8,9 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import {
-  derivePendingUserInputProgress,
-  type PendingUserInputDraftAnswer,
-} from "~/pendingUserInput";
+import type { PendingUserInputDraftAnswer } from "@t3tools/client-runtime/state/pending-user-input";
+import { derivePendingUserInputProgress } from "~/pendingUserInput";
+import { isInSideChatPane } from "~/lib/sideChatPane";
 import { type PendingUserInput } from "~/session-logic";
 import { useOwnsGlobalInput } from "./splitThreads/splitPaneContext";
 
@@ -51,7 +50,7 @@ export function useComposerPendingUserInputCard({
   // requestId, so it stays mounted while questionIndex advances, and an effect
   // event here would answer every later question with question 1's closure.
   // A layout-phase mirror instead, the same shape and reasoning as
-  // useForkDictationController. Audit on a React bump: grep useEffectEvent,
+  // useForkDictationHotkeyTarget. Audit on a React bump: grep useEffectEvent,
   // check whether the host component is memoized or a forwardRef.
   const latestRef = useRef({ activeQuestion, onToggleOption, onAdvance, responseDisabled });
   useLayoutEffect(() => {
@@ -124,6 +123,7 @@ export function useComposerPendingUserInputCard({
     const handler = (event: globalThis.KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       const target = event.target;
+      if (isInSideChatPane(target)) return;
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
         return;
       }

@@ -1,16 +1,19 @@
+import { RegistryContext } from "@effect/atom-react";
+import { Atom, AtomRegistry } from "effect/reactivity";
 import {
   DEFAULT_UNIFIED_SETTINGS,
   EnvironmentId,
   ProjectId,
   ProviderInstanceId,
   ScheduledTaskId,
+  ThreadId,
   type ScheduledTask,
 } from "@t3tools/contracts";
 import { describe, expect, it, vi } from "vite-plus/test";
 import { page, userEvent } from "vite-plus/test/browser";
 
 import "~/index.css";
-import { render } from "../../../test/render";
+import { act, render } from "../../../test/render";
 import { ScheduledTasksSettings } from "./ScheduledTasksSettings";
 
 const environmentId = EnvironmentId.make("laptop");
@@ -22,7 +25,7 @@ const task: ScheduledTask = {
   enabled: true,
   schedule: { type: "interval", everyMs: 60_000 },
   projectId,
-  threadId: null,
+  threadId: ThreadId.make("older-thread"),
   workspaceStrategy: { type: "root" },
   modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.4" },
   runtimeMode: "full-access",
@@ -38,20 +41,48 @@ const task: ScheduledTask = {
   runCount: 0,
 };
 
+// Stands in for the thread family read the editor makes when the shell lacks the bound thread.
+const threadFamilyRead = {
+  snapshotSequence: 1,
+  threads: [{ id: task.threadId, title: "Fix login bug" }],
+};
+
 // fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation
 const state = vi.hoisted(() => ({
   connected: true,
   tasksLoaded: true,
+  secondary: false,
   linkedTask: null as ScheduledTask | null,
 }));
 // fork:end fork-github-pr-automation
+const secondaryId = EnvironmentId.make("secondary");
+const permissions = new Map<string, Atom.Writable<boolean>>();
+
+function setup() {
+  state.connected = true;
+  state.tasksLoaded = true;
+  state.secondary = false;
+  // fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation
+  state.linkedTask = null;
+  // fork:end fork-github-pr-automation
+  permissions.clear();
+  permissions.set(environmentId, Atom.make(true));
+  permissions.set(secondaryId, Atom.make(true));
+  permissions.set("", Atom.make(false));
+}
+
+function secondaryEnvironment() {
+  return { ...environment(), environmentId: secondaryId, label: "Secondary" };
+}
 
 function environment() {
   return {
     environmentId,
     label: "Laptop",
     connection: { phase: state.connected ? "connected" : "disconnected" },
-    serverConfig: state.connected ? { environment: { platform: "linux" } } : null,
+    serverConfig: state.connected
+      ? { environment: { platform: "linux", capabilities: { oneTimeSchedules: true } } }
+      : null,
   };
 }
 
@@ -60,8 +91,12 @@ vi.mock(import("./SettingsScopeContext"), async (original) => {
     const entry = environment();
     return {
       scope: { kind: "all", label: "All", members: [], environmentIds: [environmentId] },
-      environments: [entry],
-      connectedEnvironments: state.connected ? [entry] : [],
+      environments: state.secondary ? [entry, secondaryEnvironment()] : [entry],
+      connectedEnvironments: state.connected
+        ? state.secondary
+          ? [entry, secondaryEnvironment()]
+          : [entry]
+        : [],
       environment: entry,
       target: null,
       targets: [],
@@ -74,25 +109,34 @@ vi.mock(import("./SettingsScopeContext"), async (original) => {
 });
 vi.mock(import("../../state/server"), async (original) => {
   const actual = await original();
-  const { Atom } = await import("effect/reactivity");
-  const allowed = Atom.make(true);
+
   return {
     ...actual,
     serverEnvironment: {
       ...actual.serverEnvironment,
       upsertScheduledTask: {
         ...actual.serverEnvironment.upsertScheduledTask,
-        permissionAtom: () => allowed,
+        permissionAtom: (id: string | null) => permissions.get(id ?? "")!,
       },
     },
+  };
+});
+vi.mock(import("../../state/threads"), async (original) => {
+  const actual = await original();
+  return {
+    ...actual,
+    threadFamilies: { ...actual.threadFamilies, familyAtom: (() => threadFamilyRead) as never },
   };
 });
 // Mirrors the real query: a null request (disconnected environment) has no data.
 vi.mock(import("../../state/query"), async (original) => ({
   ...(await original()),
   useEnvironmentQuery: ((request: unknown) => ({
-    // fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation
-    data: request === null ? null : { tasks: state.tasksLoaded ? [state.linkedTask ?? task] : [] },
+    data:
+      request === null || request === threadFamilyRead
+        ? request
+        : // fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation
+          { tasks: state.tasksLoaded ? [state.linkedTask ?? task] : [] },
     // fork:end fork-github-pr-automation
     error: null,
     isPending: false,
@@ -101,7 +145,8 @@ vi.mock(import("../../state/query"), async (original) => ({
 }));
 vi.mock(import("../../state/environments"), async (original) => ({
   ...(await original()),
-  useEnvironment: (() => environment()) as never,
+  useEnvironment: ((id: EnvironmentId) =>
+    id === secondaryId ? secondaryEnvironment() : environment()) as never,
 }));
 vi.mock(import("../../state/entities"), async (original) => ({
   ...(await original()),
@@ -113,10 +158,52 @@ vi.mock(import("../../hooks/useSettings"), async (original) => ({
 }));
 
 describe("ScheduledTasksSettings", () => {
+  it("creates on a permitted secondary and reacts to permission changes", async () => {
+    setup();
+    state.secondary = true;
+    const registry = AtomRegistry.make();
+    using _registry = { [Symbol.dispose]: () => registry.dispose() };
+    registry.set(permissions.get(environmentId)!, false);
+    await using screen = await render(
+      <RegistryContext.Provider value={registry}>
+        <ScheduledTasksSettings />
+      </RegistryContext.Provider>,
+    );
+    const create = screen.getByRole("button", { name: "New task" });
+    await expect.element(create).toBeEnabled();
+    await act(() => registry.set(permissions.get(secondaryId)!, false));
+    await expect.element(create).toBeDisabled();
+    await act(() => registry.set(permissions.get(secondaryId)!, true));
+    await expect.element(create).toBeEnabled();
+    await create.click();
+    // fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation
+    await vi.waitFor(() => expect(screen.router?.state.location.pathname).toBe("/scheduled"));
+    expect(screen.router?.state.location.search).toMatchObject({ env: secondaryId, task: "new" });
+    // fork:end fork-github-pr-automation
+  });
+
+  it("keeps the permitted representative as the creation target", async () => {
+    setup();
+    state.secondary = true;
+    await using screen = await render(<ScheduledTasksSettings />);
+    await screen.getByRole("button", { name: "New task" }).click();
+    // fork:begin fork-github-pr-automation — see .fork/customizations.yaml#fork-github-pr-automation
+    await vi.waitFor(() => expect(screen.router?.state.location.pathname).toBe("/scheduled"));
+    expect(screen.router?.state.location.search).toMatchObject({ env: environmentId, task: "new" });
+    // fork:end fork-github-pr-automation
+  });
+
+  it("disables creation without a connected target", async () => {
+    setup();
+    state.connected = false;
+    await using screen = await render(<ScheduledTasksSettings />);
+    await expect.element(screen.getByRole("button", { name: "New task" })).toBeDisabled();
+  });
+
   it("keeps a linked task's unsaved edits across a disconnect and reconnect", async () => {
-    state.connected = true;
-    state.tasksLoaded = true;
+    setup();
     await using screen = await render(<ScheduledTasksSettings taskId={task.id} />);
+    await expect.element(page.getByRole("dialog").getByText("Fix login bug")).toBeVisible();
     const name = page.getByRole("dialog").getByRole("textbox", { name: "Name" });
     await expect.element(name).toHaveValue("Review issues");
     await userEvent.fill(name, "Review stale issues");
@@ -135,7 +222,7 @@ describe("ScheduledTasksSettings", () => {
   // New task opens the fork's scheduled page instead of this dialog, so upstream's
   // "user-opened editor vs late-loading link" race cannot start here.
   it("opens New task on the scheduled page", async () => {
-    state.connected = true;
+    setup();
     state.tasksLoaded = false;
     await using screen = await render(<ScheduledTasksSettings taskId={task.id} />);
     await userEvent.click(page.getByRole("button", { name: "New task" }));
@@ -144,8 +231,7 @@ describe("ScheduledTasksSettings", () => {
   });
 
   it("opens a linked PR-review task on the scheduled page", async () => {
-    state.connected = true;
-    state.tasksLoaded = true;
+    setup();
     state.linkedTask = {
       ...task,
       schedule: { type: "webhook", signature: null, github: { repositories: [{ projectId }] } },

@@ -164,11 +164,13 @@ import { useOpenPrLink } from "../lib/openPullRequestLink";
 import { releaseComposerDraftUploads } from "../lib/composerDraftUploads";
 /* fork:end sidebar-v2-draft-rows */
 import { readLocalApi } from "../localApi";
+import { configuredHostedAppUrl } from "../hostedPairing";
 import { useSidebarPendingFileDropStore } from "../sidebarPendingFileDropStore";
 import {
   /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
   getProjectOrderKey,
   /* fork:end sidebar-v2-project-grouping */
+  pickableProjectGroups,
   selectProjectGroupingSettings,
 } from "@t3tools/client-runtime/state/project-grouping";
 import {
@@ -188,7 +190,11 @@ import {
   getThreadKeysToDeselectAfterDelete,
   useThreadSelectionStore,
 } from "../threadSelectionStore";
-import { useAcknowledgeThreadWoke, useThreadActions } from "../hooks/useThreadActions";
+import {
+  canTurnThreadIntoProject,
+  useAcknowledgeThreadWoke,
+  useThreadActions,
+} from "../hooks/useThreadActions";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { useSidebarProjectGroups } from "../hooks/useSidebarProjectGroups";
 import { useTerminalFocus } from "../hooks/useTerminalFocus";
@@ -234,6 +240,7 @@ import { useNowSecond } from "../hooks/useNowSecond";
 import { useDeadlinePassed } from "~/hooks/useDeadline";
 import {
   useEnvironmentIdentities,
+  useConnectedEnvironmentIds,
   useEnvironmentMachines,
   usePrimaryEnvironmentId,
 } from "../state/environments";
@@ -243,7 +250,7 @@ import {
   useDelegatedUnderParent,
   useProjects,
   useServerConfigs,
-  useThreadShells,
+  useVisibleThreadShells,
 } from "../state/entities";
 import { environmentPresentations } from "../state/presentation";
 import { primaryServerKeybindingsAtom } from "../state/server";
@@ -550,7 +557,10 @@ function useSidebarLookups() {
   );
   const projectScopeItems = [
     { value: "all", label: "All projects" },
-    ...projectGroups.map((project) => ({ value: project.projectKey, label: project.displayName })),
+    ...pickableProjectGroups(projectGroups).map((project) => ({
+      value: project.projectKey,
+      label: project.displayName,
+    })),
   ];
   return {
     projects,
@@ -2230,7 +2240,8 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   /* fork:begin sidebar-v2-project-grouping — see .fork/customizations.yaml#sidebar-v2-project-grouping */
   const reorderProjects = useUiStateStore((store) => store.reorderProjects);
   /* fork:end sidebar-v2-project-grouping */
-  const threads = useThreadShells();
+  // Upstream #29053: threads tagged to hide stay out of the list while recording.
+  const threads = useVisibleThreadShells();
   const delegatedUnderParent = useDelegatedUnderParent();
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
@@ -2275,6 +2286,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     pinThread,
     confirmAndUnpinThread,
     setThreadAutoSettle,
+    turnThreadIntoProject,
     reorderPinnedThread,
     markThreadUnread,
     archiveThread,
@@ -2604,6 +2616,8 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const draftIdByThreadKeyRef = useRef(draftIdByThreadKey);
   draftIdByThreadKeyRef.current = draftIdByThreadKey;
   /* fork:end sidebar-v2-draft-rows */
+  // Config is cached for offline rendering, so its presence does not make a row writable.
+  const connectedEnvironmentIds = useConnectedEnvironmentIds();
   const {
     pinnedThreads,
     reorderablePinnedKeys,
@@ -2693,8 +2707,9 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         pinned
           .filter(
             (thread) =>
+              connectedEnvironmentIds.includes(thread.environmentId) &&
               serverConfigs.get(thread.environmentId)?.environment.capabilities.threadPinReorder ===
-              true,
+                true,
           )
           .map((thread) => scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id))),
       ),
@@ -2723,6 +2738,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     nowMinute,
     scopedProjectKeys,
     serverConfigs,
+    connectedEnvironmentIds,
     inboxReturnsVersion,
     snoozeWakeClock,
     /* fork:begin sidebar-v2-status-grouping — see .fork/customizations.yaml#sidebar-v2-status-grouping */
@@ -4186,14 +4202,16 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
               /* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
                  The scope is a set here; the menu item reads "already scoped"
                  as the set holding exactly this project. */
-              projectFilter: threadProjectGroup
-                ? {
-                    label: threadProjectGroup.displayName,
-                    isActive:
-                      projectScopeKeys.size === 1 &&
-                      projectScopeKeys.has(threadProjectGroup.projectKey),
-                  }
-                : null,
+              // An archived project is not a filter choice.
+              projectFilter:
+                threadProjectGroup && !threadProjectGroup.archived
+                  ? {
+                      label: threadProjectGroup.displayName,
+                      isActive:
+                        projectScopeKeys.size === 1 &&
+                        projectScopeKeys.has(threadProjectGroup.projectKey),
+                    }
+                  : null,
               /* fork:end fork-sidebar-chrome */
               isPinned,
               isSettled,
@@ -4205,6 +4223,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
               canShareWithGuest: appAtomRegistry.get(
                 canShareWithGuestAtom(threadRef.environmentId),
               ),
+              canTurnIntoProject: canTurnThreadIntoProject(threadRef),
               supports: {
                 settlement: configLoaded,
                 autoSettleOptOut: supportsAutoSettleOptOut,
@@ -4293,6 +4312,26 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           case "unpin":
             attemptUnpin(threadRef);
             return;
+          case "turn-into-project": {
+            const result = await turnThreadIntoProject(threadRef);
+            if (result._tag === "Success") {
+              toastManager.add({
+                type: "success",
+                title: "Project created",
+                description: thread.title,
+              });
+            } else if (!isAtomCommandInterrupted(result)) {
+              const error = squashAtomCommandFailure(result);
+              toastManager.add(
+                stackedThreadToast({
+                  type: "error",
+                  title: "Could not turn thread into a project",
+                  description: error instanceof Error ? error.message : "An error occurred.",
+                }),
+              );
+            }
+            return;
+          }
           case "auto-settle:enabled":
           case "auto-settle:disabled": {
             const result = await setThreadAutoSettle(
@@ -4357,7 +4396,9 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
             }
             return;
           case "copy-thread":
-            void copyThreadReference(threadChipCopyTarget(threadRef, thread.title));
+            void copyThreadReference(
+              threadChipCopyTarget(threadRef, thread.title, configuredHostedAppUrl()),
+            );
             return;
           case "copy-thread-id":
             copyThreadIdToClipboard(thread.id, { threadId: thread.id });
@@ -4447,6 +4488,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       serverConfigs,
       setThreadAutoSettle,
       startThreadRename,
+      turnThreadIntoProject,
       updateThreadMetadata,
       timestampFormat,
     ],
@@ -5518,7 +5560,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       {/* fork:begin fork-sidebar-chrome — see .fork/customizations.yaml#fork-sidebar-chrome
           Usage is a labeled row in the chrome above, so the footer does not
           repeat it as an icon. */}
-      <SidebarChromeFooter hideUsage showUndoNotice />
+      <SidebarChromeFooter hideUsage />
       {/* fork:end fork-sidebar-chrome */}
     </>
   );
